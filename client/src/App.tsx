@@ -16,6 +16,7 @@ import Ministries from "@/pages/Ministries";
 import Rentals from "@/pages/Rentals";
 import Settings from "@/pages/Settings";
 import Pages from "@/pages/Pages";
+import Users from "@/pages/Users";
 
 function AdminRouter() {
   return (
@@ -55,6 +56,9 @@ function AdminRouter() {
       </Route>
       <Route path="/settings">
         <ProtectedRoute><Settings /></ProtectedRoute>
+      </Route>
+      <Route path="/users">
+        <ProtectedRoute><Users /></ProtectedRoute>
       </Route>
       <Route path="/login" component={Login} />
       {/* Fallback */}

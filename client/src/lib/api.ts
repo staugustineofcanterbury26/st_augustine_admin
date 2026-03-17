@@ -338,3 +338,28 @@ export const pagesApi = {
     }),
 };
 
+// ── Users ─────────────────────────────────────────────────────────────────────
+
+export interface AdminUserRecord {
+  id: number;
+  email: string;
+  name: string;
+  role: "admin" | "editor";
+  createdAt: string;
+}
+
+export type NewUserInput = {
+  email: string;
+  name: string;
+  password: string;
+  role: "admin" | "editor";
+};
+
+export const usersApi = {
+  getAll: () => api.get<AdminUserRecord[]>("/api/users"),
+  create: (data: NewUserInput) => api.post<AdminUserRecord>("/api/users", data),
+  update: (id: number, data: { name?: string; role?: "admin" | "editor" }) =>
+    api.put<AdminUserRecord>(`/api/users/${id}`, data),
+  delete: (id: number) => api.delete(`/api/users/${id}`),
+};
+

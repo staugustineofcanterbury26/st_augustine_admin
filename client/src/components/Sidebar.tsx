@@ -16,7 +16,9 @@ import {
   Settings,
   ChevronRight,
   LayoutTemplate,
+  Users,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navGroups = [
   {
@@ -58,8 +60,20 @@ const navGroups = [
   },
 ];
 
+const adminOnlyItems = [
+  { href: "/users", label: "Users", icon: Users },
+];
+
 export default function Sidebar() {
   const [location] = useLocation();
+  const { user } = useAuth();
+
+  const allGroups = navGroups.map((group) => {
+    if (group.label !== "Settings") return group;
+    // Inject Users link for admins only
+    const extra = user?.role === "admin" ? adminOnlyItems : [];
+    return { ...group, items: [...group.items, ...extra] };
+  });
 
   return (
     <aside className="flex h-screen w-64 flex-col" style={{ background: "var(--sidebar)", color: "var(--sidebar-foreground)" }}>
@@ -81,7 +95,7 @@ export default function Sidebar() {
       {/* Navigation */}
       <ScrollArea className="flex-1 px-3 py-4">
         <nav className="space-y-6">
-          {navGroups.map((group) => (
+          {allGroups.map((group) => (
             <div key={group.label}>
               <p
                 className="px-3 mb-1.5 text-xs font-medium uppercase tracking-widest"
