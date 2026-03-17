@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -27,7 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { pagesApi, type Page } from "@/lib/api";
-import { Plus, Pencil, Trash2, Globe, EyeOff, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, Globe, EyeOff, ExternalLink, ImagePlus, X } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -78,6 +78,9 @@ export default function Pages() {
   const [deleteTarget, setDeleteTarget] = useState<Page | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [previewSlug, setPreviewSlug] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<PageForm>({
     resolver: zodResolver(pageSchema) as any,
@@ -105,12 +108,14 @@ export default function Pages() {
 
   const openCreate = () => {
     setEditing(null);
+    setImageUrl(null);
     form.reset(formDefault());
     setDialogOpen(true);
   };
 
   const openEdit = (page: Page) => {
     setEditing(page);
+    setImageUrl(page.imageUrl ?? null);
     form.reset(formDefault(page));
     setDialogOpen(true);
   };
@@ -131,6 +136,45 @@ export default function Pages() {
       toast.error("Failed to save page");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+    if (!editing) {
+      toast.error("Save the page first, then upload an image");
+      return;
+    }
+    setUploadingImage(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await pagesApi.uploadImage(editing.id, formData);
+      setImageUrl(res.data.url);
+      toast.success("Image uploaded");
+      load();
+    } catch {
+      toast.error("Failed to upload image");
+    } finally {
+      setUploadingImage(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    if (!editing) return;
+    try {
+      await pagesApi.update(editing.id, { imageUrl: null });
+      setImageUrl(null);
+      toast.success("Image removed");
+      load();
+    } catch {
+      toast.error("Failed to remove image");
     }
   };
 
@@ -391,6 +435,52 @@ export default function Pages() {
                 className="font-mono text-sm resize-y"
                 placeholder={"# Welcome\n\nWrite your page content here.\n\n## Section Title\n\nMore content..."}
               />
+            </div>
+
+            {/* Page Image */}
+            <div className="space-y-2">
+              <Label>Page image <span className="text-muted-foreground font-normal">(shown as hero banner on the page)</span></Label>
+              {imageUrl ? (
+                <div className="relative rounded-lg overflow-hidden border border-input h-40 bg-muted">
+                  <img src={imageUrl} alt="Page image" className="w-full h-full object-cover" />
+                  {editing && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors"
+                      title="Remove image"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-input h-32 flex items-center justify-center bg-muted/30 text-muted-foreground text-sm">
+                  {editing ? "No image — upload one below" : "Save the page first to upload an image"}
+                </div>
+              )}
+              {editing && (
+                <>
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageUpload}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    disabled={uploadingImage}
+                    onClick={() => imageInputRef.current?.click()}
+                  >
+                    <ImagePlus className="h-4 w-4" />
+                    {uploadingImage ? "Uploading…" : imageUrl ? "Replace image" : "Upload image"}
+                  </Button>
+                </>
+              )}
             </div>
 
             {/* Settings row */}

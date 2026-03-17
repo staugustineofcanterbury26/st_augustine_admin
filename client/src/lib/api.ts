@@ -302,6 +302,7 @@ export interface Page {
   slug: string;
   content: string;
   excerpt: string | null;
+  imageUrl: string | null;
   isPublished: boolean;
   showInNav: boolean;
   navLabel: string | null;
@@ -311,7 +312,7 @@ export interface Page {
   updatedAt: string;
 }
 
-export type PageInput = Omit<Page, "id" | "createdAt" | "updatedAt">;
+export type PageInput = Omit<Page, "id" | "createdAt" | "updatedAt" | "imageUrl"> & { imageUrl?: string | null };
 
 export const pagesApi = {
   getAll: () => api.get<Page[]>("/api/pages"),
@@ -321,5 +322,9 @@ export const pagesApi = {
   update: (id: number, data: Partial<PageInput>) =>
     api.put<Page>(`/api/pages/${id}`, data),
   delete: (id: number) => api.delete(`/api/pages/${id}`),
+  uploadImage: (id: number, formData: FormData) =>
+    api.post<{ url: string }>(`/api/pages/${id}/image`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
 };
 
