@@ -46,7 +46,7 @@ const pageSchema = z.object({
   isPublished: z.boolean(),
   showInNav: z.boolean(),
   navLabel: z.string().optional(),
-  navPosition: z.enum(["top", "church", "ministries"]),
+  navPosition: z.enum(["top", "church", "ministries", "sacraments", "sacraments-faith-education"]),
   sortOrder: z.coerce.number().int().min(0),
 });
 
@@ -338,7 +338,7 @@ export default function Pages() {
                       <span className="text-xs text-green-700 font-medium">
                         {page.navLabel || page.title}
                         <span className="ml-1 text-muted-foreground font-normal">
-                          ({page.navPosition === "top" ? "Top bar" : page.navPosition === "church" ? "Church menu" : "Ministries menu"})
+                          ({page.navPosition === "top" ? "Top bar" : page.navPosition === "church" ? "Church menu" : page.navPosition === "ministries" ? "Ministries menu" : page.navPosition === "sacraments" ? "Sacraments menu" : "Sacraments → Faith Education"})
                         </span>
                       </span>
                     ) : (
@@ -597,6 +597,8 @@ export default function Pages() {
                   <option value="top">Top bar (standalone link)</option>
                   <option value="church">Home → Church dropdown</option>
                   <option value="ministries">Home → Ministries dropdown</option>
+                  <option value="sacraments">Sacraments → Sacraments group</option>
+                  <option value="sacraments-faith-education">Sacraments → Faith Education group</option>
                 </select>
               </div>
             </div>

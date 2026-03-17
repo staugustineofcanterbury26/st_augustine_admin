@@ -342,7 +342,7 @@ export interface Page {
   isPublished: boolean;
   showInNav: boolean;
   navLabel: string | null;
-  navPosition: "top" | "church" | "ministries";
+  navPosition: "top" | "church" | "ministries" | "sacraments" | "sacraments-faith-education";
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
