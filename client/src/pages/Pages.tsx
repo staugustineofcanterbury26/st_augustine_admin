@@ -81,6 +81,10 @@ export default function Pages() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const [bodyImageUrl, setBodyImageUrl] = useState<string | null>(null);
+  const [bodyImageCaption, setBodyImageCaption] = useState("");
+  const [uploadingBodyImage, setUploadingBodyImage] = useState(false);
+  const bodyImageInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<PageForm>({
     resolver: zodResolver(pageSchema) as any,
@@ -109,6 +113,8 @@ export default function Pages() {
   const openCreate = () => {
     setEditing(null);
     setImageUrl(null);
+    setBodyImageUrl(null);
+    setBodyImageCaption("");
     form.reset(formDefault());
     setDialogOpen(true);
   };
@@ -116,6 +122,8 @@ export default function Pages() {
   const openEdit = (page: Page) => {
     setEditing(page);
     setImageUrl(page.imageUrl ?? null);
+    setBodyImageUrl(page.bodyImageUrl ?? null);
+    setBodyImageCaption(page.bodyImageCaption ?? "");
     form.reset(formDefault(page));
     setDialogOpen(true);
   };
@@ -175,6 +183,55 @@ export default function Pages() {
       load();
     } catch {
       toast.error("Failed to remove image");
+    }
+  };
+
+  const handleBodyImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+    if (!editing) {
+      toast.error("Save the page first, then upload an image");
+      return;
+    }
+    setUploadingBodyImage(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await pagesApi.uploadBodyImage(editing.id, formData);
+      setBodyImageUrl(res.data.url);
+      toast.success("Body image uploaded");
+      load();
+    } catch {
+      toast.error("Failed to upload body image");
+    } finally {
+      setUploadingBodyImage(false);
+      if (bodyImageInputRef.current) bodyImageInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveBodyImage = async () => {
+    if (!editing) return;
+    try {
+      await pagesApi.update(editing.id, { bodyImageUrl: null, bodyImageCaption: null });
+      setBodyImageUrl(null);
+      setBodyImageCaption("");
+      toast.success("Body image removed");
+      load();
+    } catch {
+      toast.error("Failed to remove body image");
+    }
+  };
+
+  const handleBodyCaptionBlur = async () => {
+    if (!editing) return;
+    try {
+      await pagesApi.update(editing.id, { bodyImageCaption: bodyImageCaption || null });
+    } catch {
+      // silent — non-critical
     }
   };
 
@@ -437,50 +494,76 @@ export default function Pages() {
               />
             </div>
 
-            {/* Page Image */}
-            <div className="space-y-2">
-              <Label>Page image <span className="text-muted-foreground font-normal">(shown as hero banner on the page)</span></Label>
-              {imageUrl ? (
-                <div className="relative rounded-lg overflow-hidden border border-input h-40 bg-muted">
-                  <img src={imageUrl} alt="Page image" className="w-full h-full object-cover" />
-                  {editing && (
-                    <button
-                      type="button"
-                      onClick={handleRemoveImage}
-                      className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors"
-                      title="Remove image"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="rounded-lg border border-dashed border-input h-32 flex items-center justify-center bg-muted/30 text-muted-foreground text-sm">
-                  {editing ? "No image — upload one below" : "Save the page first to upload an image"}
-                </div>
-              )}
-              {editing && (
-                <>
-                  <input
-                    ref={imageInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageUpload}
+            {/* Images row — hero + body side by side */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Hero image */}
+              <div className="space-y-2">
+                <Label>Hero image <span className="text-muted-foreground font-normal">(full-width banner)</span></Label>
+                {imageUrl ? (
+                  <div className="relative rounded-lg overflow-hidden border border-input h-32 bg-muted">
+                    <img src={imageUrl} alt="Hero" className="w-full h-full object-cover" />
+                    {editing && (
+                      <button type="button" onClick={handleRemoveImage}
+                        className="absolute top-1.5 right-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors" title="Remove">
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-input h-32 flex items-center justify-center bg-muted/30 text-muted-foreground text-xs text-center px-2">
+                    {editing ? "No hero image" : "Save page first"}
+                  </div>
+                )}
+                {editing && (
+                  <>
+                    <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                    <Button type="button" variant="outline" size="sm" className="gap-2 w-full" disabled={uploadingImage}
+                      onClick={() => imageInputRef.current?.click()}>
+                      <ImagePlus className="h-4 w-4" />
+                      {uploadingImage ? "Uploading…" : imageUrl ? "Replace" : "Upload hero"}
+                    </Button>
+                  </>
+                )}
+              </div>
+
+              {/* Body image */}
+              <div className="space-y-2">
+                <Label>Body image <span className="text-muted-foreground font-normal">(side layout in content)</span></Label>
+                {bodyImageUrl ? (
+                  <div className="relative rounded-lg overflow-hidden border border-input h-32 bg-muted">
+                    <img src={bodyImageUrl} alt="Body" className="w-full h-full object-cover" />
+                    {editing && (
+                      <button type="button" onClick={handleRemoveBodyImage}
+                        className="absolute top-1.5 right-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors" title="Remove">
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-input h-32 flex items-center justify-center bg-muted/30 text-muted-foreground text-xs text-center px-2">
+                    {editing ? "No body image" : "Save page first"}
+                  </div>
+                )}
+                {editing && (
+                  <>
+                    <input ref={bodyImageInputRef} type="file" accept="image/*" className="hidden" onChange={handleBodyImageUpload} />
+                    <Button type="button" variant="outline" size="sm" className="gap-2 w-full" disabled={uploadingBodyImage}
+                      onClick={() => bodyImageInputRef.current?.click()}>
+                      <ImagePlus className="h-4 w-4" />
+                      {uploadingBodyImage ? "Uploading…" : bodyImageUrl ? "Replace" : "Upload body"}
+                    </Button>
+                  </>
+                )}
+                {bodyImageUrl && editing && (
+                  <Input
+                    value={bodyImageCaption}
+                    onChange={(e) => setBodyImageCaption(e.target.value)}
+                    onBlur={handleBodyCaptionBlur}
+                    placeholder="Optional caption…"
+                    className="text-sm"
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    disabled={uploadingImage}
-                    onClick={() => imageInputRef.current?.click()}
-                  >
-                    <ImagePlus className="h-4 w-4" />
-                    {uploadingImage ? "Uploading…" : imageUrl ? "Replace image" : "Upload image"}
-                  </Button>
-                </>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Settings row */}
