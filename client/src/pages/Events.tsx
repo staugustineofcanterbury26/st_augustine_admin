@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -27,19 +27,49 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { eventsApi, type Event } from "@/lib/api";
+import { eventsApi, pastoralUnitApi, type Event } from "@/lib/api";
 import { Plus, Pencil, Trash2, Calendar, CalendarDays, ImagePlus, X } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
-const CATEGORIES = ["Mass", "Prayer", "Community", "Learning", "Sacraments", "Special", "Youth", "Other"];
+/** Sort events chronologically: ISO date strings first (earliest → latest), then time within same day. Non-ISO dates (recurring) sort last. */
+function sortByDateTime(a: Event, b: Event): number {
+  const aDate = Date.parse(a.date);
+  const bDate = Date.parse(b.date);
+  const aValid = !isNaN(aDate);
+  const bValid = !isNaN(bDate);
+  if (aValid && bValid) {
+    if (aDate !== bDate) return aDate - bDate;
+    return parseTime(a.time) - parseTime(b.time);
+  }
+  if (aValid) return -1;
+  if (bValid) return 1;
+  return a.date.localeCompare(b.date);
+}
+
+function parseTime(t: string): number {
+  const m = t.match(/(\d+)(?::(\d+))?\s*(am|pm)?/i);
+  if (!m) return 0;
+  let h = parseInt(m[1], 10);
+  const min = parseInt(m[2] ?? "0", 10);
+  const period = (m[3] ?? "").toLowerCase();
+  if (period === "pm" && h !== 12) h += 12;
+  if (period === "am" && h === 12) h = 0;
+  return h * 60 + min;
+}
+
+const CATEGORIES = ["Mass", "Prayer", "Community", "Learning", "Sacraments", "Special", "Service", "Youth", "Other"];
+
+const locationEntrySchema = z.object({
+  location: z.string().min(1, "Location required"),
+  time: z.string().min(1, "Time required"),
+});
 
 const eventSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().min(1, "Description is required"),
   date: z.string().min(1, "Date is required"),
   endDate: z.string().optional(),
-  time: z.string().min(1, "Time is required"),
-  location: z.string().min(1, "Location is required"),
+  locationEntries: z.array(locationEntrySchema).min(1, "At least one location is required"),
   category: z.string().min(1, "Category is required"),
   isRecurring: z.boolean(),
   recurringPattern: z.string().optional(),
@@ -48,14 +78,22 @@ const eventSchema = z.object({
 
 type EventForm = z.infer<typeof eventSchema>;
 
+function parseLocationTimes(lt: string | null | undefined): Array<{location: string; time: string}> {
+  if (!lt) return [];
+  try { return JSON.parse(lt); } catch { return []; }
+}
+
 function formDefault(event?: Event): EventForm {
+  const parsed = parseLocationTimes(event?.locationTimes);
+  const entries = parsed.length > 0
+    ? parsed
+    : [{ location: event?.location ?? "", time: event?.time ?? "" }];
   return {
     title: event?.title ?? "",
     description: event?.description ?? "",
     date: event?.date ?? "",
     endDate: event?.endDate ?? "",
-    time: event?.time ?? "",
-    location: event?.location ?? "",
+    locationEntries: entries,
     category: event?.category ?? "Mass",
     isRecurring: event?.isRecurring ?? false,
     recurringPattern: event?.recurringPattern ?? "",
@@ -70,6 +108,7 @@ const categoryColor: Record<string, string> = {
   Learning: "bg-purple-100 text-purple-700",
   Sacraments: "bg-yellow-100 text-yellow-700",
   Special: "bg-pink-100 text-pink-700",
+  Service: "bg-teal-100 text-teal-700",
   Youth: "bg-cyan-100 text-cyan-700",
   Other: "bg-gray-100 text-gray-700",
 };
@@ -82,6 +121,21 @@ export default function Events() {
   const [editing, setEditing] = useState<Event | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [parishLocations, setParishLocations] = useState<string[]>([]);
+
+  // Load parish locations for the datalist once on mount
+  useEffect(() => {
+    pastoralUnitApi.getAll()
+      .then((res) => {
+        setParishLocations(
+          res.data
+            .filter((p) => p.isActive)
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+            .map((p) => `${p.name} — ${[p.address, p.city].filter(Boolean).join(", ")}`)
+        );
+      })
+      .catch(() => { /* non-critical */ });
+  }, []);
 
   // Image upload
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -91,6 +145,11 @@ export default function Events() {
   const form = useForm<EventForm>({
     resolver: zodResolver(eventSchema),
     defaultValues: formDefault(),
+  });
+
+  const { fields: locFields, append: appendLoc, remove: removeLoc } = useFieldArray({
+    control: form.control,
+    name: "locationEntries",
   });
 
   const load = () => {
@@ -108,7 +167,7 @@ export default function Events() {
     if (filter === "published") return e.isPublished;
     if (filter === "draft") return !e.isPublished;
     return true;
-  });
+  }).sort(sortByDateTime);
 
   const openCreate = () => {
     setEditing(null);
@@ -126,7 +185,20 @@ export default function Events() {
 
   const onSubmit = async (data: EventForm) => {
     setSaving(true);
-    const payload = { ...data, endDate: data.endDate || undefined };
+    const firstEntry = data.locationEntries[0];
+    const payload = {
+      title: data.title,
+      description: data.description,
+      date: data.date,
+      endDate: data.endDate || undefined,
+      time: firstEntry.time,
+      location: firstEntry.location,
+      locationTimes: JSON.stringify(data.locationEntries),
+      category: data.category,
+      isRecurring: data.isRecurring,
+      recurringPattern: data.recurringPattern || undefined,
+      isPublished: data.isPublished,
+    };
     try {
       if (editing) {
         await eventsApi.update(editing.id, payload);
@@ -319,21 +391,50 @@ export default function Events() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Time</Label>
-                <Input placeholder="e.g. 7:00 PM" {...form.register("time")} />
-                {form.formState.errors.time && (
-                  <p className="text-xs text-destructive">{form.formState.errors.time.message}</p>
-                )}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Locations &amp; Times</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 h-7 text-xs"
+                  onClick={() => appendLoc({ location: "", time: "" })}
+                >
+                  <Plus className="h-3 w-3" /> Add Location
+                </Button>
               </div>
-              <div className="space-y-1.5">
-                <Label>Location</Label>
-                <Input placeholder="e.g. Parish Hall" {...form.register("location")} />
-                {form.formState.errors.location && (
-                  <p className="text-xs text-destructive">{form.formState.errors.location.message}</p>
-                )}
-              </div>
+              {locFields.map((field, i) => (
+                <div key={field.id} className="flex gap-2 items-start p-3 border border-orange-100 rounded-lg bg-orange-50/40">
+                  <div className="flex-1 space-y-2">
+                    <Input
+                      placeholder="Location"
+                      list="parish-locations-datalist"
+                      {...form.register(`locationEntries.${i}.location`)}
+                    />
+                    <Input
+                      placeholder="Time e.g. 9:00 AM"
+                      {...form.register(`locationEntries.${i}.time`)}
+                    />
+                    {(form.formState.errors.locationEntries?.[i]?.location || form.formState.errors.locationEntries?.[i]?.time) && (
+                      <p className="text-xs text-destructive">Location and time are required</p>
+                    )}
+                  </div>
+                  {locFields.length > 1 && (
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeLoc(i)} className="flex-shrink-0 mt-0.5">
+                      <X className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <datalist id="parish-locations-datalist">
+                {parishLocations.map((loc) => (
+                  <option key={loc} value={loc} />
+                ))}
+              </datalist>
+              {form.formState.errors.locationEntries && !Array.isArray(form.formState.errors.locationEntries) && (
+                <p className="text-xs text-destructive">{form.formState.errors.locationEntries.message}</p>
+              )}
             </div>
 
             <div className="space-y-1.5">

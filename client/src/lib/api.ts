@@ -59,6 +59,7 @@ export interface MassTime {
   day: string;
   times: string[];
   location: string;
+  locationTimes?: string | null;
   language: string;
   notes?: string;
   isActive: boolean;
@@ -86,6 +87,7 @@ export interface Event {
   endDate?: string;
   time: string;
   location: string;
+  locationTimes?: string | null;
   category: string;
   imageUrl?: string;
   isRecurring: boolean;
@@ -296,6 +298,34 @@ export interface DashboardStats {
 
 export const dashboardApi = {
   getStats: () => api.get<DashboardStats>("/api/dashboard/stats"),
+};
+
+// ── Pastoral Unit Parishes ────────────────────────────────────────────────────
+
+export interface PastoralParish {
+  id: number;
+  name: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  phone?: string;
+  email?: string;
+  websiteUrl?: string;
+  facebookUrl?: string;
+  massTimes?: string;
+  isActive: boolean;
+  sortOrder: number;
+  updatedAt: string;
+}
+
+export type PastoralParishInput = Omit<PastoralParish, "id" | "updatedAt">;
+
+export const pastoralUnitApi = {
+  getAll: () => api.get<PastoralParish[]>("/api/pastoral-unit"),
+  create: (data: PastoralParishInput) => api.post<PastoralParish>("/api/pastoral-unit", data),
+  update: (id: number, data: Partial<PastoralParishInput>) =>
+    api.put<PastoralParish>(`/api/pastoral-unit/${id}`, data),
+  delete: (id: number) => api.delete(`/api/pastoral-unit/${id}`),
 };
 
 // ── Pages ─────────────────────────────────────────────────────────────────────

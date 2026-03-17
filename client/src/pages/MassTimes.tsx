@@ -18,13 +18,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { massTimesApi, type MassTime } from "@/lib/api";
-import { Plus, Pencil, Trash2, GripVertical, Clock } from "lucide-react";
+import { massTimesApi, pastoralUnitApi, type MassTime } from "@/lib/api";
+import { Plus, Pencil, Trash2, GripVertical, Clock, X } from "lucide-react";
+
+const locationEntrySchema = z.object({
+  location: z.string().min(1, "Location required"),
+  timesInput: z.string().min(1, "At least one time required"),
+});
 
 const massTimeSchema = z.object({
   day: z.string().min(1, "Day is required"),
-  times: z.array(z.object({ value: z.string().min(1, "Time is required") })).min(1, "At least one time needed"),
-  location: z.string().min(1, "Location is required"),
+  locationEntries: z.array(locationEntrySchema).min(1, "At least one location is required"),
   language: z.string().min(1, "Language is required"),
   notes: z.string().optional(),
   isActive: z.boolean(),
@@ -33,11 +37,22 @@ const massTimeSchema = z.object({
 
 type MassTimeForm = z.infer<typeof massTimeSchema>;
 
+function parseMassLocationTimes(lt: string | null | undefined): Array<{location: string; timesInput: string}> {
+  if (!lt) return [];
+  try {
+    const parsed: Array<{location: string; times: string[]}> = JSON.parse(lt);
+    return parsed.map((e) => ({ location: e.location, timesInput: e.times.join(", ") }));
+  } catch { return []; }
+}
+
 function formDefault(mt?: MassTime): MassTimeForm {
+  const parsed = parseMassLocationTimes(mt?.locationTimes);
+  const entries = parsed.length > 0
+    ? parsed
+    : [{ location: mt?.location ?? "Main Sanctuary", timesInput: mt?.times.join(", ") ?? "" }];
   return {
     day: mt?.day ?? "",
-    times: mt ? mt.times.map((v) => ({ value: v })) : [{ value: "" }],
-    location: mt?.location ?? "Main Sanctuary",
+    locationEntries: entries,
     language: mt?.language ?? "English",
     notes: mt?.notes ?? "",
     isActive: mt?.isActive ?? true,
@@ -52,15 +67,30 @@ export default function MassTimes() {
   const [editing, setEditing] = useState<MassTime | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [parishLocations, setParishLocations] = useState<string[]>([]);
+
+  // Load parish locations for the datalist once on mount
+  useEffect(() => {
+    pastoralUnitApi.getAll()
+      .then((res) => {
+        setParishLocations(
+          res.data
+            .filter((p) => p.isActive)
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+            .map((p) => `${p.name} — ${[p.address, p.city].filter(Boolean).join(", ")}`)
+        );
+      })
+      .catch(() => { /* non-critical */ });
+  }, []);
 
   const form = useForm<MassTimeForm>({
     resolver: zodResolver(massTimeSchema) as Resolver<MassTimeForm>,
     defaultValues: formDefault(),
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields: locFields, append: appendLoc, remove: removeLoc } = useFieldArray({
     control: form.control,
-    name: "times",
+    name: "locationEntries",
   });
 
   const load = () => {
@@ -88,7 +118,21 @@ export default function MassTimes() {
 
   const onSubmit = async (data: MassTimeForm) => {
     setSaving(true);
-    const payload = { ...data, times: data.times.map((t) => t.value) };
+    const locationTimesArr = data.locationEntries.map((e) => ({
+      location: e.location,
+      times: e.timesInput.split(/[,;]+/).map((t) => t.trim()).filter(Boolean),
+    }));
+    const firstEntry = locationTimesArr[0];
+    const payload = {
+      day: data.day,
+      location: firstEntry.location,
+      times: firstEntry.times.length ? firstEntry.times : [""],
+      locationTimes: JSON.stringify(locationTimesArr),
+      language: data.language,
+      notes: data.notes || undefined,
+      isActive: data.isActive,
+      sortOrder: data.sortOrder,
+    };
     try {
       if (editing) {
         await massTimesApi.update(editing.id, payload);
@@ -173,18 +217,27 @@ export default function MassTimes() {
                         <Badge variant="outline">{mt.language}</Badge>
                       )}
                     </div>
-                    <div className="flex flex-wrap gap-2 mb-1">
-                      {mt.times.map((t, i) => (
-                        <span
-                          key={i}
-                          className="inline-flex items-center gap-1 text-sm text-muted-foreground"
-                        >
-                          <Clock className="h-3 w-3" />
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                    <p className="text-xs text-muted-foreground">{mt.location}</p>
+                    <div className="space-y-1 mb-1">
+                      {mt.locationTimes ? (
+                        (JSON.parse(mt.locationTimes) as Array<{location: string; times: string[]}>).map((entry, ei) => (
+                          <div key={ei} className="flex flex-wrap gap-2">
+                            <span className="text-xs font-medium text-gray-700">{entry.location}:</span>
+                            {entry.times.map((t, ti) => (
+                              <span key={ti} className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                                <Clock className="h-3 w-3" />{t}
+                              </span>
+                            ))}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {mt.times.map((t, i) => (
+                            <span key={i} className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                              <Clock className="h-3 w-3" />{t}
+                            </span>
+                          ))}
+                        </div>
+                      )}\n                    </div>\n                    <p className="text-xs text-muted-foreground">{mt.locationTimes ? "" : mt.location}</p>
                     {mt.notes && (
                       <p className="text-xs text-muted-foreground italic mt-1">{mt.notes}</p>
                     )}
@@ -237,40 +290,47 @@ export default function MassTimes() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Location</Label>
-              <Input placeholder="Main Sanctuary" {...form.register("location")} />
-            </div>
-
             <div className="space-y-2">
-              <Label>Service Times</Label>
-              {fields.map((field, i) => (
-                <div key={field.id} className="flex gap-2">
-                  <Input
-                    placeholder="e.g. 9:00 AM"
-                    {...form.register(`times.${i}.value`)}
-                  />
-                  {fields.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => remove(i)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
+              <div className="flex items-center justify-between">
+                <Label>Locations &amp; Times</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 h-7 text-xs"
+                  onClick={() => appendLoc({ location: "", timesInput: "" })}
+                >
+                  <Plus className="h-3 w-3" /> Add Location
+                </Button>
+              </div>
+              {locFields.map((field, i) => (
+                <div key={field.id} className="flex gap-2 items-start p-3 border border-orange-100 rounded-lg bg-orange-50/40">
+                  <div className="flex-1 space-y-2">
+                    <Input
+                      placeholder="Location"
+                      list="parish-locations-datalist"
+                      {...form.register(`locationEntries.${i}.location`)}
+                    />
+                    <Input
+                      placeholder="Times e.g. 9:00 AM, 10:30 AM"
+                      {...form.register(`locationEntries.${i}.timesInput`)}
+                    />
+                    {(form.formState.errors.locationEntries?.[i]?.location || form.formState.errors.locationEntries?.[i]?.timesInput) && (
+                      <p className="text-xs text-destructive">Location and at least one time are required</p>
+                    )}
+                  </div>
+                  {locFields.length > 1 && (
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeLoc(i)} className="flex-shrink-0 mt-0.5">
+                      <X className="h-4 w-4 text-destructive" />
                     </Button>
                   )}
                 </div>
               ))}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => append({ value: "" })}
-                className="gap-1"
-              >
-                <Plus className="h-3 w-3" /> Add Time
-              </Button>
+              <datalist id="parish-locations-datalist">
+                {parishLocations.map((loc) => (
+                  <option key={loc} value={loc} />
+                ))}
+              </datalist>
             </div>
 
             <div className="space-y-1.5">
