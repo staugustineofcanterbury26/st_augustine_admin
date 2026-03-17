@@ -105,6 +105,10 @@ export const eventsApi = {
   update: (id: number, data: Partial<EventInput>) =>
     api.put<Event>(`/api/events/${id}`, data),
   delete: (id: number) => api.delete(`/api/events/${id}`),
+  uploadImage: (id: number, formData: FormData) =>
+    api.post<{ url: string }>(`/api/events/${id}/image`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
 };
 
 // ── Gallery ───────────────────────────────────────────────────────────────────

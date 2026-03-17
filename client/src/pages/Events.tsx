@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { eventsApi, type Event } from "@/lib/api";
-import { Plus, Pencil, Trash2, Calendar, CalendarDays } from "lucide-react";
+import { Plus, Pencil, Trash2, Calendar, CalendarDays, ImagePlus, X } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 const CATEGORIES = ["Mass", "Prayer", "Community", "Learning", "Sacraments", "Special", "Youth", "Other"];
@@ -41,7 +41,6 @@ const eventSchema = z.object({
   time: z.string().min(1, "Time is required"),
   location: z.string().min(1, "Location is required"),
   category: z.string().min(1, "Category is required"),
-  imageUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   isRecurring: z.boolean(),
   recurringPattern: z.string().optional(),
   isPublished: z.boolean(),
@@ -58,7 +57,6 @@ function formDefault(event?: Event): EventForm {
     time: event?.time ?? "",
     location: event?.location ?? "",
     category: event?.category ?? "Mass",
-    imageUrl: event?.imageUrl ?? "",
     isRecurring: event?.isRecurring ?? false,
     recurringPattern: event?.recurringPattern ?? "",
     isPublished: event?.isPublished ?? true,
@@ -85,6 +83,11 @@ export default function Events() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
+  // Image upload
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
   const form = useForm<EventForm>({
     resolver: zodResolver(eventSchema),
     defaultValues: formDefault(),
@@ -109,19 +112,21 @@ export default function Events() {
 
   const openCreate = () => {
     setEditing(null);
+    setImageUrl(null);
     form.reset(formDefault());
     setDialogOpen(true);
   };
 
   const openEdit = (event: Event) => {
     setEditing(event);
+    setImageUrl(event.imageUrl ?? null);
     form.reset(formDefault(event));
     setDialogOpen(true);
   };
 
   const onSubmit = async (data: EventForm) => {
     setSaving(true);
-    const payload = { ...data, imageUrl: data.imageUrl || undefined, endDate: data.endDate || undefined };
+    const payload = { ...data, endDate: data.endDate || undefined };
     try {
       if (editing) {
         await eventsApi.update(editing.id, payload);
@@ -136,6 +141,45 @@ export default function Events() {
       toast.error("Failed to save — please try again.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+    if (!editing) {
+      toast.error("Save the event first, then upload an image");
+      return;
+    }
+    setUploadingImage(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await eventsApi.uploadImage(editing.id, formData);
+      setImageUrl(res.data.url);
+      toast.success("Image uploaded");
+      load();
+    } catch {
+      toast.error("Failed to upload image");
+    } finally {
+      setUploadingImage(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    if (!editing) return;
+    try {
+      await eventsApi.update(editing.id, { imageUrl: undefined });
+      setImageUrl(null);
+      toast.success("Image removed");
+      load();
+    } catch {
+      toast.error("Failed to remove image");
     }
   };
 
@@ -310,11 +354,53 @@ export default function Events() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Image URL (optional)</Label>
-              <Input placeholder="https://…" {...form.register("imageUrl")} />
-              {form.formState.errors.imageUrl && (
-                <p className="text-xs text-destructive">{form.formState.errors.imageUrl.message}</p>
-              )}
+              <Label>Event Image (optional)</Label>
+              <div className="border rounded-lg p-3 space-y-3">
+                {imageUrl ? (
+                  <div className="relative w-full h-40 rounded overflow-hidden bg-gray-100">
+                    <img src={imageUrl} alt="Event" className="w-full h-full object-cover" />
+                    {editing && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors"
+                        title="Remove image"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-32 rounded bg-gray-50 border-dashed border border-gray-200">
+                    <div className="text-center text-muted-foreground">
+                      <ImagePlus className="h-8 w-8 mx-auto mb-1 opacity-40" />
+                      <p className="text-xs">{editing ? "No image uploaded" : "Save event first to upload"}</p>
+                    </div>
+                  </div>
+                )}
+                {editing && (
+                  <>
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      disabled={uploadingImage}
+                      onClick={() => imageInputRef.current?.click()}
+                    >
+                      <ImagePlus className="h-4 w-4 mr-1.5" />
+                      {uploadingImage ? "Uploading…" : imageUrl ? "Replace Image" : "Upload Image"}
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
 
             <div className="space-y-3">
