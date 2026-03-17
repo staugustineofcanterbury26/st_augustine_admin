@@ -183,7 +183,7 @@ export const parishInfoApi = {
     api.put<ParishInfo>("/api/parish-info", data),
 };
 
-// ── Fr. Manus ─────────────────────────────────────────────────────────────────
+// ── Parish Priest ─────────────────────────────────────────────────────────────────
 
 export interface PriestProfile {
   id: number;
@@ -305,6 +305,7 @@ export interface Page {
   isPublished: boolean;
   showInNav: boolean;
   navLabel: string | null;
+  navPosition: "top" | "church" | "ministries";
   sortOrder: number;
   createdAt: string;
   updatedAt: string;

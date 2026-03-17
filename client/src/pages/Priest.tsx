@@ -104,7 +104,7 @@ export default function Priest() {
 
   if (isLoading) {
     return (
-      <AdminLayout title="Fr. Manus — Profile">
+      <AdminLayout title="Parish Priest — Profile">
         <div className="max-w-3xl space-y-4">
           <Skeleton className="h-48 rounded-xl" />
           <Skeleton className="h-64 rounded-xl" />
@@ -115,8 +115,8 @@ export default function Priest() {
 
   return (
     <AdminLayout
-      title="Fr. Manus — Profile"
-      description="Manage the priest profile displayed on the Meet Fr. Manus page."
+      title="Parish Priest — Profile"
+      description="Manage the priest profile displayed on the Meet Parish Priest page."
     >
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-3xl">
         {/* Photo Upload */}
@@ -190,7 +190,7 @@ export default function Priest() {
 
             <div className="space-y-1.5">
               <Label>Full Biography</Label>
-              <Textarea rows={8} placeholder="Full bio for the Meet Fr. Manus page…" {...form.register("bio")} />
+              <Textarea rows={8} placeholder="Full bio for the Meet Parish Priest page…" {...form.register("bio")} />
               {form.formState.errors.bio && (
                 <p className="text-xs text-destructive">{form.formState.errors.bio.message}</p>
               )}

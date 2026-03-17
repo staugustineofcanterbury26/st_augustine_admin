@@ -46,6 +46,7 @@ const pageSchema = z.object({
   isPublished: z.boolean(),
   showInNav: z.boolean(),
   navLabel: z.string().optional(),
+  navPosition: z.enum(["top", "church", "ministries"]),
   sortOrder: z.coerce.number().int().min(0),
 });
 
@@ -60,6 +61,7 @@ function formDefault(page?: Page): PageForm {
     isPublished: page?.isPublished ?? false,
     showInNav: page?.showInNav ?? false,
     navLabel: page?.navLabel ?? "",
+    navPosition: page?.navPosition ?? "top",
     sortOrder: page?.sortOrder ?? 0,
   };
 }
@@ -231,6 +233,9 @@ export default function Pages() {
                     {page.showInNav ? (
                       <span className="text-xs text-green-700 font-medium">
                         {page.navLabel || page.title}
+                        <span className="ml-1 text-muted-foreground font-normal">
+                          ({page.navPosition === "top" ? "Top bar" : page.navPosition === "church" ? "Church menu" : "Ministries menu"})
+                        </span>
                       </span>
                     ) : (
                       <span className="text-xs text-muted-foreground">–</span>
@@ -357,11 +362,27 @@ export default function Pages() {
               </div>
             </div>
 
-            {/* Nav label (show only if showInNav is on) */}
+            {/* Nav label + position (show only if showInNav is on) */}
             {form.watch("showInNav") && (
-              <div className="space-y-1.5">
-                <Label>Nav label <span className="text-muted-foreground font-normal">(defaults to title)</span></Label>
-                <Input {...form.register("navLabel")} placeholder={form.watch("title")} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Nav label <span className="text-muted-foreground font-normal">(defaults to title)</span></Label>
+                  <Input {...form.register("navLabel")} placeholder={form.watch("title")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Nav position</Label>
+                  <select
+                    {...form.register("navPosition")}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="top">Top bar (standalone link)</option>
+                    <option value="church">Home → Church dropdown</option>
+                    <option value="ministries">Home → Ministries dropdown</option>
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    Where this page appears in the navigation menu.
+                  </p>
+                </div>
               </div>
             )}
 

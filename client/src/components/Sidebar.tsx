@@ -31,7 +31,7 @@ const navGroups = [
       { href: "/mass-times", label: "Mass Times", icon: Clock },
       { href: "/events", label: "Events", icon: CalendarDays },
       { href: "/sacraments", label: "Sacraments", icon: BookOpen },
-      { href: "/priest", label: "Fr. Manus", icon: UserCircle },
+      { href: "/priest", label: "Parish Priest", icon: UserCircle },
     ],
   },
   {
