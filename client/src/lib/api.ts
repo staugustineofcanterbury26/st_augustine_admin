@@ -293,3 +293,32 @@ export interface DashboardStats {
 export const dashboardApi = {
   getStats: () => api.get<DashboardStats>("/api/dashboard/stats"),
 };
+
+// ── Pages ─────────────────────────────────────────────────────────────────────
+
+export interface Page {
+  id: number;
+  title: string;
+  slug: string;
+  content: string;
+  excerpt: string | null;
+  isPublished: boolean;
+  showInNav: boolean;
+  navLabel: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type PageInput = Omit<Page, "id" | "createdAt" | "updatedAt">;
+
+export const pagesApi = {
+  getAll: () => api.get<Page[]>("/api/pages"),
+  getBySlug: (slug: string) => api.get<Page>(`/api/pages/${slug}`),
+  create: (data: Omit<PageInput, "slug"> & { slug?: string }) =>
+    api.post<Page>("/api/pages", data),
+  update: (id: number, data: Partial<PageInput>) =>
+    api.put<Page>(`/api/pages/${id}`, data),
+  delete: (id: number) => api.delete(`/api/pages/${id}`),
+};
+

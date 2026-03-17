@@ -15,6 +15,7 @@ import {
   BookOpen,
   Settings,
   ChevronRight,
+  LayoutTemplate,
 } from "lucide-react";
 
 const navGroups = [
@@ -38,6 +39,7 @@ const navGroups = [
     items: [
       { href: "/gallery", label: "Photo Gallery", icon: Images },
       { href: "/bulletins", label: "Bulletins & Docs", icon: FileText },
+      { href: "/pages", label: "Pages", icon: LayoutTemplate },
     ],
   },
   {

@@ -15,6 +15,7 @@ import Sacraments from "@/pages/Sacraments";
 import Ministries from "@/pages/Ministries";
 import Rentals from "@/pages/Rentals";
 import Settings from "@/pages/Settings";
+import Pages from "@/pages/Pages";
 
 function AdminRouter() {
   return (
@@ -48,6 +49,9 @@ function AdminRouter() {
       </Route>
       <Route path="/rentals">
         <ProtectedRoute><Rentals /></ProtectedRoute>
+      </Route>
+      <Route path="/pages">
+        <ProtectedRoute><Pages /></ProtectedRoute>
       </Route>
       <Route path="/settings">
         <ProtectedRoute><Settings /></ProtectedRoute>
