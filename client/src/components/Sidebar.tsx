@@ -1,0 +1,128 @@
+import { Link, useLocation } from "wouter";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
+import {
+  LayoutDashboard,
+  Clock,
+  CalendarDays,
+  Images,
+  FileText,
+  Church,
+  UserCircle,
+  HandHeart,
+  Building2,
+  BookOpen,
+  Settings,
+  ChevronRight,
+} from "lucide-react";
+
+const navGroups = [
+  {
+    label: "Overview",
+    items: [
+      { href: "/", label: "Dashboard", icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: "Content",
+    items: [
+      { href: "/mass-times", label: "Mass Times", icon: Clock },
+      { href: "/events", label: "Events", icon: CalendarDays },
+      { href: "/sacraments", label: "Sacraments", icon: BookOpen },
+      { href: "/priest", label: "Fr. Manus", icon: UserCircle },
+    ],
+  },
+  {
+    label: "Media",
+    items: [
+      { href: "/gallery", label: "Photo Gallery", icon: Images },
+      { href: "/bulletins", label: "Bulletins & Docs", icon: FileText },
+    ],
+  },
+  {
+    label: "Community",
+    items: [
+      { href: "/ministries", label: "Get Involved", icon: HandHeart },
+      { href: "/rentals", label: "Rentals", icon: Building2 },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [
+      { href: "/parish-info", label: "Parish Info", icon: Church },
+      { href: "/settings", label: "Account", icon: Settings },
+    ],
+  },
+];
+
+export default function Sidebar() {
+  const [location] = useLocation();
+
+  return (
+    <aside className="flex h-screen w-64 flex-col" style={{ background: "var(--sidebar)", color: "var(--sidebar-foreground)" }}>
+      {/* Logo */}
+      <div className="flex items-center gap-3 px-6 py-5 border-b" style={{ borderColor: "var(--sidebar-border)" }}>
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: "var(--sidebar-primary)" }}>
+          <Church className="h-5 w-5" style={{ color: "var(--sidebar-primary-foreground)" }} />
+        </div>
+        <div>
+          <p className="text-sm font-semibold leading-none font-playfair" style={{ color: "var(--sidebar-foreground)" }}>
+            St. Augustine
+          </p>
+          <p className="text-xs mt-0.5" style={{ color: "oklch(0.6 0.01 65)" }}>
+            Admin Portal
+          </p>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <ScrollArea className="flex-1 px-3 py-4">
+        <nav className="space-y-6">
+          {navGroups.map((group) => (
+            <div key={group.label}>
+              <p
+                className="px-3 mb-1.5 text-xs font-medium uppercase tracking-widest"
+                style={{ color: "oklch(0.5 0.01 65)" }}
+              >
+                {group.label}
+              </p>
+              <ul className="space-y-0.5">
+                {group.items.map((item) => {
+                  const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
+                  return (
+                    <li key={item.href}>
+                      <Link href={item.href}>
+                        <span
+                          className={cn(
+                            "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors cursor-pointer group",
+                            isActive
+                              ? "font-medium"
+                              : "hover:opacity-90"
+                          )}
+                          style={
+                            isActive
+                              ? {
+                                  background: "var(--sidebar-accent)",
+                                  color: "var(--sidebar-accent-foreground)",
+                                }
+                              : { color: "var(--sidebar-foreground)" }
+                          }
+                        >
+                          <item.icon className="h-4 w-4 flex-shrink-0" />
+                          <span className="flex-1">{item.label}</span>
+                          {isActive && <ChevronRight className="h-3 w-3 opacity-60" />}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+              <Separator className="mt-4 opacity-20" />
+            </div>
+          ))}
+        </nav>
+      </ScrollArea>
+    </aside>
+  );
+}
