@@ -339,7 +339,7 @@ export default function Pages() {
             </div>
 
             {/* Settings row */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 rounded-lg border p-4 bg-muted/30">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-lg border p-4 bg-muted/30">
               <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="isPublished" className="cursor-pointer">Published</Label>
                 <Switch
@@ -360,29 +360,24 @@ export default function Pages() {
                 <Label>Sort order</Label>
                 <Input {...form.register("sortOrder")} type="number" min={0} className="w-20" />
               </div>
+              <div className="space-y-1.5">
+                <Label>Nav position</Label>
+                <select
+                  {...form.register("navPosition")}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="top">Top bar (standalone link)</option>
+                  <option value="church">Home → Church dropdown</option>
+                  <option value="ministries">Home → Ministries dropdown</option>
+                </select>
+              </div>
             </div>
 
-            {/* Nav label + position (show only if showInNav is on) */}
+            {/* Nav label (show only if showInNav is on) */}
             {form.watch("showInNav") && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>Nav label <span className="text-muted-foreground font-normal">(defaults to title)</span></Label>
-                  <Input {...form.register("navLabel")} placeholder={form.watch("title")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Nav position</Label>
-                  <select
-                    {...form.register("navPosition")}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  >
-                    <option value="top">Top bar (standalone link)</option>
-                    <option value="church">Home → Church dropdown</option>
-                    <option value="ministries">Home → Ministries dropdown</option>
-                  </select>
-                  <p className="text-xs text-muted-foreground">
-                    Where this page appears in the navigation menu.
-                  </p>
-                </div>
+              <div className="space-y-1.5">
+                <Label>Nav label <span className="text-muted-foreground font-normal">(defaults to title)</span></Label>
+                <Input {...form.register("navLabel")} placeholder={form.watch("title")} />
               </div>
             )}
 
