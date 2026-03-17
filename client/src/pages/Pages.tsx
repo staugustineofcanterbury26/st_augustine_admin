@@ -75,6 +75,8 @@ export default function Pages() {
   const [editing, setEditing] = useState<Page | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Page | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [previewSlug, setPreviewSlug] = useState<string | null>(null);
 
   const form = useForm<PageForm>({
@@ -133,7 +135,6 @@ export default function Pages() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this page? This cannot be undone.")) return;
     setDeletingId(id);
     try {
       await pagesApi.delete(id);
@@ -143,6 +144,8 @@ export default function Pages() {
       toast.error("Failed to delete page");
     } finally {
       setDeletingId(null);
+      setDeleteTarget(null);
+      setDeleteConfirmText("");
     }
   };
 
@@ -271,7 +274,7 @@ export default function Pages() {
                         variant="ghost"
                         size="icon"
                         className="text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(page.id)}
+                        onClick={() => { setDeleteTarget(page); setDeleteConfirmText(""); }}
                         disabled={deletingId === page.id}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -284,6 +287,58 @@ export default function Pages() {
           </Table>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open) { setDeleteTarget(null); setDeleteConfirmText(""); } }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-playfair text-xl text-destructive">
+              Delete page
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              This will permanently delete{" "}
+              <span className="font-semibold text-foreground">{deleteTarget?.title}</span>{" "}
+              and remove it from the public website. This action cannot be undone.
+            </p>
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              The page will be immediately unpublished and all content will be lost.
+            </div>
+            <div className="space-y-1.5">
+              <Label>
+                To confirm, type{" "}
+                <span className="font-mono font-semibold">{deleteTarget?.title}</span>{" "}
+                below
+              </Label>
+              <Input
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder={deleteTarget?.title ?? ""}
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setDeleteTarget(null); setDeleteConfirmText(""); }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteConfirmText !== deleteTarget?.title || deletingId === deleteTarget?.id}
+              onClick={() => deleteTarget && handleDelete(deleteTarget.id)}
+            >
+              {deletingId === deleteTarget?.id ? "Deleting…" : "Delete page"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
