@@ -397,3 +397,27 @@ export const usersApi = {
   delete: (id: number) => api.delete(`/api/users/${id}`),
 };
 
+// ── Storage ────────────────────────────────────────────────────────────────────
+
+export interface BlobFile {
+  url: string;
+  pathname: string;
+  size: number;
+  uploadedAt: string;
+  ext: string;
+  isOrphan: boolean;
+}
+
+export interface StorageInfo {
+  available: boolean;
+  blobs: BlobFile[];
+  usedBytes: number;
+  limitBytes: number;
+}
+
+export const storageApi = {
+  getInfo: () => api.get<StorageInfo>("/api/storage"),
+  deleteFile: (url: string) => api.delete("/api/storage/file", { data: { url } }),
+  deleteOrphans: () => api.delete("/api/storage/orphans"),
+};
+

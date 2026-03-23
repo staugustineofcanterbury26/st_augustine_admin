@@ -18,6 +18,7 @@ import Settings from "@/pages/Settings";
 import Pages from "@/pages/Pages";
 import Users from "@/pages/Users";
 import PastoralUnit from "@/pages/PastoralUnit";
+import Storage from "@/pages/Storage";
 
 function AdminRouter() {
   return (
@@ -63,6 +64,9 @@ function AdminRouter() {
       </Route>
       <Route path="/pastoral-unit">
         <ProtectedRoute><PastoralUnit /></ProtectedRoute>
+      </Route>
+      <Route path="/storage">
+        <ProtectedRoute><Storage /></ProtectedRoute>
       </Route>
       <Route path="/login" component={Login} />
       {/* Fallback */}

@@ -17,6 +17,7 @@ import {
   ChevronRight,
   LayoutTemplate,
   Users,
+  HardDrive,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -42,6 +43,7 @@ const navGroups = [
       { href: "/gallery", label: "Photo Gallery", icon: Images },
       { href: "/bulletins", label: "Bulletins & Docs", icon: FileText },
       { href: "/pages", label: "Pages", icon: LayoutTemplate },
+      { href: "/storage", label: "Storage", icon: HardDrive },
     ],
   },
   {
