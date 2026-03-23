@@ -111,7 +111,7 @@ export default function Storage() {
   const displayed = filter === "orphans" ? orphans : blobs;
 
   return (
-    <AdminLayout>
+    <AdminLayout title="Storage" description="Manage files stored in Vercel Blob">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -257,7 +257,7 @@ export default function Storage() {
       </div>
 
       {/* Confirm single delete */}
-      <AlertDialog open={!!confirmDeleteUrl} onOpenChange={(o) => !o && setConfirmDeleteUrl(null)}>
+      <AlertDialog open={!!confirmDeleteUrl} onOpenChange={(o: boolean) => !o && setConfirmDeleteUrl(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete file?</AlertDialogTitle>
