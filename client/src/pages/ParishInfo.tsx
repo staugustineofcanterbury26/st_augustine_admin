@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -36,7 +36,7 @@ export default function ParishInfo() {
   const [saving, setSaving] = useState(false);
 
   const form = useForm<ParishInfoForm>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as Resolver<ParishInfoForm>,
     defaultValues: {
       parishName: "",
       address: "",

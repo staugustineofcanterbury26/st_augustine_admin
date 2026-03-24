@@ -96,7 +96,7 @@ export default function Priest() {
     formData.append("file", file);
     try {
       const res = await priestApi.uploadPhoto(formData);
-      setPhotoUrl(res.data.photoUrl);
+      setPhotoUrl(res.data.photoUrl ?? null);
       toast.success("Photo updated");
     } catch {
       toast.error("Failed to upload photo");
@@ -122,7 +122,7 @@ export default function Priest() {
     setSelectingFromGallery(true);
     try {
       const res = await priestApi.setPhotoFromGallery(galleryImage.id);
-      setPhotoUrl(res.data.photoUrl);
+      setPhotoUrl(res.data.photoUrl ?? null);
       setShowGalleryModal(false);
       toast.success("Photo updated from gallery");
     } catch {

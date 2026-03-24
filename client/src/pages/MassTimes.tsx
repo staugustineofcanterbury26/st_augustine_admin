@@ -237,7 +237,9 @@ export default function MassTimes() {
                             </span>
                           ))}
                         </div>
-                      )}\n                    </div>\n                    <p className="text-xs text-muted-foreground">{mt.locationTimes ? "" : mt.location}</p>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">{mt.locationTimes ? "" : mt.location}</p>
                     {mt.notes && (
                       <p className="text-xs text-muted-foreground italic mt-1">{mt.notes}</p>
                     )}
