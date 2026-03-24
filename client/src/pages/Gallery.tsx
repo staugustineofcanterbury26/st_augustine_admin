@@ -136,6 +136,11 @@ export default function Gallery() {
       title="Photo Gallery"
       description="Upload and organize images for the public gallery."
     >
+      <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <p className="text-sm text-blue-900">
+          <strong>Note:</strong> Use the toggle switch on each photo to hide/show it in the public gallery. Hidden photos will not appear on the frontend gallery page.
+        </p>
+      </div>
       <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
         <Tabs value={albumFilter} onValueChange={setAlbumFilter}>
           <TabsList className="flex-wrap h-auto gap-1">
