@@ -8,24 +8,33 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, KeyRound, ExternalLink } from "lucide-react";
+import { LogOut, User, KeyRound, ExternalLink, Menu } from "lucide-react";
 import { Link } from "wouter";
 
 interface TopBarProps {
   title: string;
   description?: string;
+  onOpenSidebar?: () => void;
 }
 
-export default function TopBar({ title, description }: TopBarProps) {
+export default function TopBar({ title, description, onOpenSidebar }: TopBarProps) {
   const { user, logout } = useAuth();
 
   return (
     <header className="flex items-center justify-between border-b bg-card px-6 py-4">
-      <div>
+      <div className="flex items-center gap-4">
+        {/* Mobile: hamburger opens sidebar drawer */}
+        <div className="md:hidden">
+          <Button variant="ghost" size="sm" onClick={() => onOpenSidebar?.()} aria-label="Open navigation" className="p-2">
+            <Menu className="h-4 w-4" />
+          </Button>
+        </div>
+        <div>
         <h1 className="text-xl font-semibold font-playfair text-foreground">{title}</h1>
         {description && (
           <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
         )}
+        </div>
       </div>
 
       <div className="flex items-center gap-3">

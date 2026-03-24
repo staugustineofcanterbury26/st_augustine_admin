@@ -379,6 +379,27 @@ export const pagesApi = {
     }),
 };
 
+// ── Contact Messages (admin) ────────────────────────────────────────────────
+
+export interface ContactMessageRecord {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string | null;
+  subject: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export const contactMessagesApi = {
+  getAll: () => api.get<ContactMessageRecord[]>("/api/contact-messages"),
+  getById: (id: number) => api.get<ContactMessageRecord>(`/api/contact-messages/${id}`),
+  update: (id: number, data: Partial<Pick<ContactMessageRecord, "isRead"> | Record<string, unknown>>) =>
+    api.put<ContactMessageRecord>(`/api/contact-messages/${id}`, data),
+  delete: (id: number) => api.delete(`/api/contact-messages/${id}`),
+};
+
 // ── Users ─────────────────────────────────────────────────────────────────────
 
 export interface AdminUserRecord {

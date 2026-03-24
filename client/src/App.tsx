@@ -19,6 +19,7 @@ import Pages from "@/pages/Pages";
 import Users from "@/pages/Users";
 import PastoralUnit from "@/pages/PastoralUnit";
 import Storage from "@/pages/Storage";
+import ContactMessages from "@/pages/ContactMessages";
 
 function AdminRouter() {
   return (
@@ -55,6 +56,9 @@ function AdminRouter() {
       </Route>
       <Route path="/pages">
         <ProtectedRoute><Pages /></ProtectedRoute>
+      </Route>
+      <Route path="/contact-messages">
+        <ProtectedRoute><ContactMessages /></ProtectedRoute>
       </Route>
       <Route path="/settings">
         <ProtectedRoute><Settings /></ProtectedRoute>
