@@ -43,6 +43,13 @@ const pageSchema = z.object({
   slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9-]+$/, "Lowercase letters, numbers and hyphens only"),
   content: z.string(),
   excerpt: z.string().optional(),
+  metaTitle: z.string().optional().nullable(),
+  metaDescription: z.string().optional().nullable(),
+  canonical: z.string().url().optional().nullable(),
+  ogTitle: z.string().optional().nullable(),
+  ogDescription: z.string().optional().nullable(),
+  ogImage: z.string().url().optional().nullable(),
+  robots: z.string().optional(),
   isPublished: z.boolean(),
   showInNav: z.boolean(),
   navLabel: z.string().optional(),
@@ -58,6 +65,13 @@ function formDefault(page?: Page): PageForm {
     slug: page?.slug ?? "",
     content: page?.content ?? "",
     excerpt: page?.excerpt ?? "",
+    metaTitle: page?.metaTitle ?? "",
+    metaDescription: page?.metaDescription ?? "",
+    canonical: page?.canonical ?? "",
+    ogTitle: page?.ogTitle ?? "",
+    ogDescription: page?.ogDescription ?? "",
+    ogImage: page?.ogImage ?? "",
+    robots: page?.robots ?? "index,follow",
     isPublished: page?.isPublished ?? false,
     showInNav: page?.showInNav ?? false,
     navLabel: page?.navLabel ?? "",
@@ -600,6 +614,41 @@ export default function Pages() {
                   <option value="sacraments">Sacraments → Sacraments group</option>
                   <option value="sacraments-faith-education">Sacraments → Faith Education group</option>
                 </select>
+              </div>
+            </div>
+
+            {/* SEO Settings */}
+            <div className="rounded-lg border p-4 bg-muted/30 space-y-3">
+              <p className="font-medium">SEO Settings</p>
+              <div className="space-y-1.5">
+                <Label>Meta title <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Input {...form.register("metaTitle")} placeholder="Custom meta title for search engines" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Meta description <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Textarea {...form.register("metaDescription")} rows={3} placeholder="Short description shown in search results" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Canonical URL <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  <Input {...form.register("canonical")} placeholder="https://your-site.com/pages/your-slug" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Robots <span className="text-muted-foreground font-normal">(index/noindex)</span></Label>
+                  <Input {...form.register("robots")} placeholder="index,follow or noindex,nofollow" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Open Graph title <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Input {...form.register("ogTitle")} placeholder="Title used when sharing on social media" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Open Graph description <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Textarea {...form.register("ogDescription")} rows={2} placeholder="Description for social sharing" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Open Graph image URL <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Input {...form.register("ogImage")} placeholder="https://.../og-image.jpg" />
               </div>
             </div>
 

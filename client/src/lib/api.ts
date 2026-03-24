@@ -336,6 +336,13 @@ export interface Page {
   slug: string;
   content: string;
   excerpt: string | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  canonical?: string | null;
+  ogTitle?: string | null;
+  ogDescription?: string | null;
+  ogImage?: string | null;
+  robots?: string | null;
   imageUrl: string | null;
   bodyImageUrl: string | null;
   bodyImageCaption: string | null;
