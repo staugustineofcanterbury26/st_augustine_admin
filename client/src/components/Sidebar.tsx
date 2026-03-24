@@ -38,6 +38,7 @@ const navGroups = [
   {
     label: "Content",
     items: [
+      { href: "/homepage", label: "Homepage", icon: LayoutTemplate },
       { href: "/mass-times", label: "Mass Times", icon: Clock },
       { href: "/events", label: "Events", icon: CalendarDays },
       { href: "/sacraments", label: "Sacraments", icon: BookOpen },

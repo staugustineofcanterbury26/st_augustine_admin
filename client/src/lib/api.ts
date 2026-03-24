@@ -454,3 +454,52 @@ export const storageApi = {
   deleteOrphans: () => api.delete("/api/storage/orphans"),
 };
 
+// ── Homepage Content ───────────────────────────────────────────────────────────
+
+export interface HomepageContent {
+  id: number;
+  heroVideoUrl?: string | null;
+  heroImageUrl: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  heroDescription: string;
+  updatedAt: string;
+}
+
+export interface HomepageFeaturedSection {
+  id: number;
+  sectionNumber: number;
+  icon: string;
+  title: string;
+  description: string;
+  linkTarget: string;
+  isActive: boolean;
+  sortOrder: number;
+  updatedAt: string;
+}
+
+export interface HomepageData {
+  hero: HomepageContent;
+  sections: HomepageFeaturedSection[];
+}
+
+export const homepageApi = {
+  get: () => api.get<HomepageData>("/api/homepage"),
+  getAdmin: () => api.get<HomepageData>("/api/homepage/admin"),
+  updateHero: (data: Partial<Omit<HomepageContent, "id" | "updatedAt" | "heroVideoUrl" | "heroImageUrl">>) =>
+    api.put<HomepageContent>("/api/homepage/hero", data),
+  uploadImage: (formData: FormData) =>
+    api.post<HomepageContent>("/api/homepage/hero/image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+  uploadVideo: (formData: FormData) =>
+    api.post<HomepageContent>("/api/homepage/hero/video", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+  deleteImage: () => api.delete("/api/homepage/hero/image"),
+  deleteVideo: () => api.delete("/api/homepage/hero/video"),
+  updateSections: (sections: Omit<HomepageFeaturedSection, "updatedAt">[]) =>
+    api.put<HomepageFeaturedSection[]>("/api/homepage/sections", sections),
+  getSections: () => api.get<HomepageFeaturedSection[]>("/api/homepage/sections"),
+};
+

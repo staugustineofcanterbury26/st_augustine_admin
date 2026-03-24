@@ -20,6 +20,7 @@ import Users from "@/pages/Users";
 import PastoralUnit from "@/pages/PastoralUnit";
 import Storage from "@/pages/Storage";
 import ContactMessages from "@/pages/ContactMessages";
+import Homepage from "@/pages/Homepage";
 
 function AdminRouter() {
   return (
@@ -35,6 +36,9 @@ function AdminRouter() {
       </Route>
       <Route path="/gallery">
         <ProtectedRoute><Gallery /></ProtectedRoute>
+      </Route>
+      <Route path="/homepage">
+        <ProtectedRoute><Homepage /></ProtectedRoute>
       </Route>
       <Route path="/bulletins">
         <ProtectedRoute><Bulletins /></ProtectedRoute>
