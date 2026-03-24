@@ -67,7 +67,7 @@ function formDefault(page?: Page): PageForm {
     excerpt: page?.excerpt ?? "",
     metaTitle: page?.metaTitle ?? "",
     metaDescription: page?.metaDescription ?? "",
-    canonical: page?.canonical ?? "",
+    canonical: page?.canonical ?? null,
     ogTitle: page?.ogTitle ?? "",
     ogDescription: page?.ogDescription ?? "",
     ogImage: page?.ogImage ?? "",
@@ -145,11 +145,24 @@ export default function Pages() {
   const onSubmit = async (values: PageForm) => {
     setSaving(true);
     try {
+      // Auto-generate canonical URL from slug if not provided
+      const canonical = values.canonical || `${frontendBase}/${values.slug}`;
+      
       if (editing) {
-        await pagesApi.update(editing.id, { ...values, excerpt: values.excerpt || null, navLabel: values.navLabel || null });
+        await pagesApi.update(editing.id, { 
+          ...values, 
+          canonical, 
+          excerpt: values.excerpt || null, 
+          navLabel: values.navLabel || null 
+        });
         toast.success("Page updated");
       } else {
-        await pagesApi.create({ ...values, excerpt: values.excerpt || null, navLabel: values.navLabel || null });
+        await pagesApi.create({ 
+          ...values, 
+          canonical, 
+          excerpt: values.excerpt || null, 
+          navLabel: values.navLabel || null 
+        });
         toast.success("Page created");
       }
       setDialogOpen(false);
@@ -631,7 +644,8 @@ export default function Pages() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>Canonical URL <span className="text-muted-foreground font-normal">(optional)</span></Label>
-                  <Input {...form.register("canonical")} placeholder="https://your-site.com/pages/your-slug" />
+                  <Input {...form.register("canonical")} placeholder={`Auto-generated as: ${frontendBase}/${form.watch("slug") || "your-slug"}`} />
+                  <p className="text-xs text-muted-foreground">Leave empty to auto-generate from the page slug</p>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Robots <span className="text-muted-foreground font-normal">(index/noindex)</span></Label>
