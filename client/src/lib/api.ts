@@ -209,9 +209,11 @@ export const priestApi = {
   update: (data: Partial<Omit<PriestProfile, "id" | "updatedAt">>) =>
     api.put<PriestProfile>("/api/priest", data),
   uploadPhoto: (formData: FormData) =>
-    api.post<{ url: string }>("/api/priest/photo", formData, {
+    api.post<PriestProfile>("/api/priest/photo", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
+  setPhotoFromGallery: (galleryImageId: number) =>
+    api.post<PriestProfile>("/api/priest/photo-from-gallery", { galleryImageId }),
 };
 
 // ── Sacraments ────────────────────────────────────────────────────────────────
