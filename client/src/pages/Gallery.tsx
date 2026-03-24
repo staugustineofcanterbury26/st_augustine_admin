@@ -22,6 +22,10 @@ import { Upload, Trash2, Pencil, Images, X } from "lucide-react";
 export default function Gallery() {
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [albums, setAlbums] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [columns, setColumns] = useState<number>(4);
+  const [showHidden, setShowHidden] = useState<boolean>(true);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [albumFilter, setAlbumFilter] = useState<string>("all");
   const [editingImage, setEditingImage] = useState<GalleryImage | null>(null);
@@ -36,7 +40,7 @@ export default function Gallery() {
 
   const load = () => {
     setIsLoading(true);
-    Promise.all([galleryApi.getAll(), galleryApi.getAlbums()])
+    Promise.all([galleryApi.getAll({ includeHidden: showHidden }), galleryApi.getAlbums(showHidden)])
       .then(([imagesRes, albumsRes]) => {
         setImages(imagesRes.data);
         setAlbums(albumsRes.data);
@@ -45,7 +49,7 @@ export default function Gallery() {
       .finally(() => setIsLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [showHidden]);
 
   const filtered = albumFilter === "all"
     ? images
@@ -106,6 +110,38 @@ export default function Gallery() {
     }
   };
 
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
+  };
+
+  const clearSelection = () => setSelectedIds([]);
+
+  const bulkSetPublished = async (publish: boolean) => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`Are you sure you want to ${publish ? "publish" : "hide"} ${selectedIds.length} image(s)?`)) return;
+    try {
+      await Promise.all(selectedIds.map((id) => galleryApi.update(id, { isPublished: publish })));
+      setImages((prev) => prev.map((img) => (selectedIds.includes(img.id) ? { ...img, isPublished: publish } : img)));
+      toast.success("Bulk update complete");
+      clearSelection();
+    } catch {
+      toast.error("Bulk update failed");
+    }
+  };
+
+  const bulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`Delete ${selectedIds.length} image(s) permanently?`)) return;
+    try {
+      await Promise.all(selectedIds.map((id) => galleryApi.delete(id)));
+      setImages((prev) => prev.filter((img) => !selectedIds.includes(img.id)));
+      toast.success("Deleted selected images");
+      clearSelection();
+    } catch {
+      toast.error("Bulk delete failed");
+    }
+  };
+
   const togglePublished = async (img: GalleryImage) => {
     try {
       await galleryApi.update(img.id, { isPublished: !img.isPublished });
@@ -142,15 +178,24 @@ export default function Gallery() {
         </p>
       </div>
       <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-        <Tabs value={albumFilter} onValueChange={setAlbumFilter}>
-          <TabsList className="flex-wrap h-auto gap-1">
-            <TabsTrigger value="all">All ({images.length})</TabsTrigger>
-            {albums.map((album) => (
-              <TabsTrigger key={album} value={album}>{album}</TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-
+        <div className="flex items-center gap-2">
+          <Label>View</Label>
+          <div className="flex items-center gap-1">
+            <Button variant={viewMode === 'grid' ? undefined : 'ghost'} onClick={() => setViewMode('grid')} className="px-2">Grid</Button>
+            <Button variant={viewMode === 'list' ? undefined : 'ghost'} onClick={() => setViewMode('list')} className="px-2">List</Button>
+          </div>
+          <Label className="ml-3">Columns</Label>
+          <select value={columns} onChange={(e) => setColumns(parseInt(e.target.value, 10))} className="rounded border px-2 py-1">
+            <option value={2}>2</option>
+            <option value={3}>3</option>
+            <option value={4}>4</option>
+            <option value={5}>5</option>
+          </select>
+          <div className="ml-4 flex items-center gap-2">
+            <Switch checked={showHidden} onCheckedChange={(v) => setShowHidden(Boolean(v))} />
+            <span className="text-sm">Include hidden</span>
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           {uploading && (
             <span className="text-sm text-muted-foreground flex items-center gap-2">
@@ -176,19 +221,47 @@ export default function Gallery() {
           </Button>
         </div>
       </div>
+      
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          {selectedIds.length > 0 && (
+            <>
+              <Button onClick={() => bulkSetPublished(true)} className="bg-primary/90">Publish</Button>
+              <Button onClick={() => bulkSetPublished(false)} className="bg-orange-500/90">Hide</Button>
+              <Button onClick={bulkDelete} className="bg-red-500/90">Delete</Button>
+              <Button variant="ghost" onClick={clearSelection}>Clear</Button>
+            </>
+          )}
+        </div>
+        <div className="text-sm text-muted-foreground">Showing {images.length} images{showHidden ? ' (including hidden)' : ''}</div>
+      </div>
+        <Tabs value={albumFilter} onValueChange={setAlbumFilter}>
+          <TabsList className="flex-wrap h-auto gap-1">
+            <TabsTrigger value="all">All ({images.length})</TabsTrigger>
+            {albums.map((album) => (
+              <TabsTrigger key={album} value={album}>{album}</TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
       {isLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+        <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
           {Array.from({ length: 10 }).map((_, i) => (
             <Skeleton key={i} className="aspect-square rounded-lg" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState onUpload={() => fileInputRef.current?.click()} />
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+      ) : viewMode === "grid" ? (
+        <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
           {filtered.map((img) => (
             <div key={img.id} className="group relative rounded-lg overflow-hidden border bg-card aspect-square">
+              <input
+                type="checkbox"
+                checked={selectedIds.includes(img.id)}
+                onChange={() => toggleSelect(img.id)}
+                className="absolute top-2 left-2 z-20 h-4 w-4"
+              />
               <img
                 src={img.thumbnailUrl ?? img.url}
                 alt={img.title}
@@ -226,7 +299,7 @@ export default function Gallery() {
                 </div>
               </div>
               {/* Published toggle */}
-              <div className="absolute top-2 left-2">
+              <div className="absolute top-2 right-2">
                 <Switch
                   checked={img.isPublished}
                   onCheckedChange={() => void togglePublished(img)}
@@ -238,6 +311,27 @@ export default function Gallery() {
                   Hidden
                 </Badge>
               )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((img) => (
+            <div key={img.id} className="flex items-center gap-3 rounded border bg-card p-3">
+              <input type="checkbox" checked={selectedIds.includes(img.id)} onChange={() => toggleSelect(img.id)} />
+              <img src={img.thumbnailUrl ?? img.url} alt={img.title} className="h-20 w-20 object-cover rounded" />
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium">{img.title}</h4>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={img.isPublished} onCheckedChange={() => void togglePublished(img)} className="scale-75" />
+                    <Button variant="ghost" onClick={() => openEdit(img)}><Pencil /></Button>
+                    <Button variant="ghost" onClick={() => void handleDelete(img.id)}><Trash2 /></Button>
+                  </div>
+                </div>
+                {img.album && <div className="text-sm text-muted-foreground">{img.album}</div>}
+                {img.description && <div className="text-sm mt-2">{img.description}</div>}
+              </div>
             </div>
           ))}
         </div>

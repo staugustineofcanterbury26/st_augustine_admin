@@ -128,8 +128,10 @@ export interface GalleryImage {
 }
 
 export const galleryApi = {
-  getAll: (params?: { album?: string }) =>
-    api.get<GalleryImage[]>("/api/gallery", { params }),
+  getAll: (params?: { album?: string; includeHidden?: boolean }) =>
+    params?.includeHidden
+      ? api.get<GalleryImage[]>('/api/gallery/admin', { params: { album: params.album } })
+      : api.get<GalleryImage[]>('/api/gallery', { params }),
   upload: (formData: FormData) =>
     api.post<GalleryImage>("/api/gallery/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
@@ -137,7 +139,8 @@ export const galleryApi = {
   update: (id: number, data: Partial<Pick<GalleryImage, "title" | "description" | "album" | "sortOrder" | "isPublished">>) =>
     api.put<GalleryImage>(`/api/gallery/${id}`, data),
   delete: (id: number) => api.delete(`/api/gallery/${id}`),
-  getAlbums: () => api.get<string[]>("/api/gallery/albums"),
+  getAlbums: (includeHidden?: boolean) =>
+    includeHidden ? api.get<string[]>('/api/gallery/albums/admin') : api.get<string[]>('/api/gallery/albums'),
 };
 
 // ── Bulletins ─────────────────────────────────────────────────────────────────
