@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { pagesApi } from "@/lib/api";
 
 interface LinkTargetSelectProps {
   value: string;
@@ -18,6 +19,7 @@ interface LinkTargetSelectProps {
 
 // Internal site URLs that users can choose from
 const SITE_URLS = [
+  { label: "Home", value: "/" },
   { label: "Mass Times", value: "/mass-times" },
   { label: "Get Involved", value: "/get-involved" },
   { label: "Sacraments", value: "/sacraments" },
@@ -26,13 +28,32 @@ const SITE_URLS = [
   { label: "Meetings & Priest", value: "/meet-fr-manus" },
   { label: "Rentals", value: "/rentals" },
   { label: "Contact", value: "/contact" },
-  { label: "Home", value: "/" },
 ];
 
 export default function LinkTargetSelect({ value, onChange, label = "Link Target (URL)" }: LinkTargetSelectProps) {
   const [isExternal, setIsExternal] = useState(() => {
-    return value && !SITE_URLS.some((url) => url.value === value);
+    return value && !SITE_URLS.some((url) => url.value === value) && !value.startsWith("/");
   });
+  const [pages, setPages] = useState<Array<{ slug: string; title: string }>>([]);
+
+  useEffect(() => {
+    pagesApi
+      .getAll()
+      .then((res) => {
+        setPages(res.data);
+      })
+      .catch(() => {
+        // Silently fail if pages can't be loaded
+      });
+  }, []);
+
+  const allOptions = [
+    ...SITE_URLS,
+    ...pages.map((page) => ({
+      label: page.title,
+      value: `/pages/${page.slug}`,
+    })),
+  ];
 
   const handlePresetSelect = (url: string) => {
     onChange(url);
@@ -51,12 +72,12 @@ export default function LinkTargetSelect({ value, onChange, label = "Link Target
           <>
             <Select value={value} onValueChange={handlePresetSelect}>
               <SelectTrigger className="flex-1 h-8 text-sm">
-                <SelectValue placeholder="Select a page" />
+                <SelectValue placeholder="Select a page or URL" />
               </SelectTrigger>
               <SelectContent>
-                {SITE_URLS.map((url) => (
-                  <SelectItem key={url.value} value={url.value}>
-                    {url.label}
+                {allOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
                   </SelectItem>
                 ))}
                 <div className="px-2 py-1.5 text-xs text-muted-foreground border-t mt-2">
@@ -80,7 +101,7 @@ export default function LinkTargetSelect({ value, onChange, label = "Link Target
         ) : (
           <>
             <Input
-              type="url"
+              type="text"
               placeholder="https://example.com"
               value={value}
               onChange={handleExternalChange}

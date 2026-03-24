@@ -45,7 +45,7 @@ const sectionSchema = z.object({
   icon: z.string(),
   title: z.string().min(1, "Title is required"),
   description: z.string(),
-  linkTarget: z.string().url("Must be a valid URL"),
+  linkTarget: z.string().min(1, "Link target is required"),
   isActive: z.boolean(),
   sortOrder: z.number(),
 });
