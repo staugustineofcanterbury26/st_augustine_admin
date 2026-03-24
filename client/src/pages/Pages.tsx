@@ -42,17 +42,17 @@ const pageSchema = z.object({
   title: z.string().min(1, "Title is required"),
   slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9-]+$/, "Lowercase letters, numbers and hyphens only"),
   content: z.string(),
-  excerpt: z.string().optional(),
-  metaTitle: z.string().optional().nullable(),
-  metaDescription: z.string().optional().nullable(),
-  canonical: z.string().url().optional().nullable(),
-  ogTitle: z.string().optional().nullable(),
-  ogDescription: z.string().optional().nullable(),
-  ogImage: z.string().url().optional().nullable(),
-  robots: z.string().optional(),
+  excerpt: z.string().nullish().transform(val => val || null),
+  metaTitle: z.string().nullish().transform(val => val || null),
+  metaDescription: z.string().nullish().transform(val => val || null),
+  canonical: z.union([z.literal(""), z.string().url()]).nullish().transform(val => (val && val.length > 0 ? val : null)),
+  ogTitle: z.string().nullish().transform(val => val || null),
+  ogDescription: z.string().nullish().transform(val => val || null),
+  ogImage: z.union([z.literal(""), z.string().url()]).nullish().transform(val => (val && val.length > 0 ? val : null)),
+  robots: z.string().nullish().transform(val => val || undefined),
   isPublished: z.boolean(),
   showInNav: z.boolean(),
-  navLabel: z.string().optional(),
+  navLabel: z.string().nullish().transform(val => val || null),
   navPosition: z.enum(["top", "church", "ministries", "sacraments", "sacraments-faith-education"]),
   sortOrder: z.coerce.number().int().min(0),
 });
@@ -70,7 +70,7 @@ function formDefault(page?: Page): PageForm {
     canonical: page?.canonical ?? null,
     ogTitle: page?.ogTitle ?? "",
     ogDescription: page?.ogDescription ?? "",
-    ogImage: page?.ogImage ?? "",
+    ogImage: page?.ogImage ?? null,
     robots: page?.robots ?? "index,follow",
     isPublished: page?.isPublished ?? false,
     showInNav: page?.showInNav ?? false,
@@ -148,10 +148,14 @@ export default function Pages() {
       // Auto-generate canonical URL from slug if not provided
       const canonical = values.canonical || `${frontendBase}/${values.slug}`;
       
+      // Auto-generate OG image from hero image if not provided
+      const ogImage = values.ogImage || (imageUrl ?? null);
+      
       if (editing) {
         await pagesApi.update(editing.id, { 
           ...values, 
           canonical, 
+          ogImage,
           excerpt: values.excerpt || null, 
           navLabel: values.navLabel || null 
         });
@@ -160,6 +164,7 @@ export default function Pages() {
         await pagesApi.create({ 
           ...values, 
           canonical, 
+          ogImage,
           excerpt: values.excerpt || null, 
           navLabel: values.navLabel || null 
         });
@@ -662,7 +667,8 @@ export default function Pages() {
               </div>
               <div className="space-y-1.5">
                 <Label>Open Graph image URL <span className="text-muted-foreground font-normal">(optional)</span></Label>
-                <Input {...form.register("ogImage")} placeholder="https://.../og-image.jpg" />
+                <Input {...form.register("ogImage")} placeholder={imageUrl ? `Auto-generated as: ${imageUrl}` : "Leave empty to use hero image"} />
+                <p className="text-xs text-muted-foreground">Leave empty to auto-generate from the hero image</p>
               </div>
             </div>
 

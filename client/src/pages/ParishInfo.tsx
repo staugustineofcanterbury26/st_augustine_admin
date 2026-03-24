@@ -22,9 +22,9 @@ const schema = z.object({
   phone: z.string().min(1),
   email: z.string().email("Enter a valid email"),
   officeHours: z.string().min(1),
-  facebookUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-  youtubeUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-  instagramUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  facebookUrl: z.union([z.literal(""), z.string().url()]).nullish().transform(val => (val && val.length > 0 ? val : null)),
+  youtubeUrl: z.union([z.literal(""), z.string().url()]).nullish().transform(val => (val && val.length > 0 ? val : null)),
+  instagramUrl: z.union([z.literal(""), z.string().url()]).nullish().transform(val => (val && val.length > 0 ? val : null)),
   missionStatement: z.string().min(1),
   welcomeMessage: z.string().min(1),
 });
