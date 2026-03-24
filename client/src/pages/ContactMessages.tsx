@@ -1,23 +1,25 @@
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { contactMessagesApi, ContactMessageRecord } from "@/lib/api";
 import { toast } from "sonner";
+import AdminLayout from "@/components/AdminLayout";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { contactMessagesApi, type ContactMessageRecord } from "@/lib/api";
+import { Mail, Trash2, MessageCircle } from "lucide-react";
 
 export default function ContactMessages() {
   const [messages, setMessages] = useState<ContactMessageRecord[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const res = await contactMessagesApi.getAll();
-      setMessages(res.data);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to load messages");
-    } finally {
-      setLoading(false);
-    }
+  const load = () => {
+    setIsLoading(true);
+    contactMessagesApi
+      .getAll()
+      .then((res) => setMessages(res.data))
+      .catch(() => toast.error("Failed to load messages"))
+      .finally(() => setIsLoading(false));
   };
 
   useEffect(() => { load(); }, []);
@@ -25,54 +27,115 @@ export default function ContactMessages() {
   const toggleRead = async (id: number, isRead: boolean) => {
     try {
       await contactMessagesApi.update(id, { isRead: !isRead });
-      setMessages((m) => m.map((it) => (it.id === id ? { ...it, isRead: !isRead } : it)));
-    } catch (err) {
-      console.error(err);
+      setMessages((prev) =>
+        prev.map((m) => (m.id === id ? { ...m, isRead: !isRead } : m))
+      );
+    } catch {
       toast.error("Failed to update message");
     }
   };
 
-  const remove = async (id: number) => {
-    if (!confirm("Delete this message?")) return;
+  const handleDelete = async (id: number) => {
+    if (!confirm("Delete this message permanently?")) return;
+    setDeletingId(id);
     try {
       await contactMessagesApi.delete(id);
-      setMessages((m) => m.filter((it) => it.id !== id));
-      toast.success("Deleted");
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to delete");
+      setMessages((prev) => prev.filter((m) => m.id !== id));
+      toast.success("Message deleted");
+    } catch {
+      toast.error("Failed to delete message");
+    } finally {
+      setDeletingId(null);
     }
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Contact Messages</h1>
-      {loading ? (
-        <p>Loading…</p>
-      ) : messages.length === 0 ? (
-        <p>No messages yet.</p>
-      ) : (
-        <div className="space-y-4">
-          {messages.map((m) => (
-            <div key={m.id} className={`p-4 border rounded ${m.isRead ? "bg-gray-50" : "bg-white"}`}>
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="text-sm text-gray-600">{new Date(m.createdAt).toLocaleString()}</div>
-                  <div className="font-medium text-lg">{m.name} — {m.subject}</div>
-                  <div className="text-sm text-gray-700">{m.email} {m.phone ? ` • ${m.phone}` : ""}</div>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={() => toggleRead(m.id, m.isRead)}>
-                    {m.isRead ? "Mark Unread" : "Mark Read"}
-                  </Button>
-                  <Button size="sm" variant="destructive" onClick={() => remove(m.id)}>Delete</Button>
-                </div>
-              </div>
-              <div className="mt-3 whitespace-pre-wrap text-sm text-gray-800">{m.message}</div>
-            </div>
+    <AdminLayout
+      title="Contact Messages"
+      description="View and manage messages submitted through the contact form."
+    >
+      <div className="flex items-center justify-between mb-6">
+        <p className="text-sm text-muted-foreground">{messages.length} messages total</p>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-xl" />
           ))}
         </div>
+      ) : messages.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <div className="space-y-3">
+          {messages
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            .map((m) => (
+              <Card key={m.id} className={m.isRead ? "opacity-60" : ""}>
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-base truncate">{m.name}</h3>
+                        <Badge variant={m.isRead ? "secondary" : "default"}>
+                          {m.isRead ? "Read" : "Unread"}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                        <Mail className="h-3 w-3" />
+                        <a href={`mailto:${m.email}`} className="hover:underline">{m.email}</a>
+                        {m.phone && (
+                          <>
+                            <span>•</span>
+                            <a href={`tel:${m.phone}`} className="hover:underline">{m.phone}</a>
+                          </>
+                        )}
+                        <span>•</span>
+                        <time>{new Date(m.createdAt).toLocaleString()}</time>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm font-medium mb-2">
+                        <MessageCircle className="h-4 w-4 text-primary" />
+                        {m.subject}
+                      </div>
+                      <p className="text-sm text-foreground whitespace-pre-wrap">{m.message}</p>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => toggleRead(m.id, m.isRead)}
+                      >
+                        {m.isRead ? "Mark Unread" : "Mark Read"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(m.id)}
+                        disabled={deletingId === m.id}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+        </div>
       )}
+    </AdminLayout>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+      <div className="h-16 w-16 rounded-full bg-orange-50 flex items-center justify-center mb-4">
+        <Mail className="h-8 w-8 text-primary" />
+      </div>
+      <h3 className="font-playfair text-lg font-semibold mb-1">No messages yet</h3>
+      <p className="text-sm text-muted-foreground">Messages from the contact form will appear here.</p>
     </div>
   );
 }
