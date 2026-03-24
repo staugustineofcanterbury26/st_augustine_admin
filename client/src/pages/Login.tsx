@@ -64,7 +64,7 @@ export default function Login() {
         {/* Brand header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center mb-4">
-            <img src="/logo.png" alt="Saint Augustine of Canterbury Parish" className="h-20 w-auto" />
+            <img src="/logo.png" alt="Saint Augustine of Canterbury Parish" className="h-40 w-auto" />
           </div>
           <h1 className="font-playfair text-3xl font-bold text-foreground">
             St. Augustine of Canterbury

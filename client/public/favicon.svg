@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" fill="none">
+  <defs>
+    <linearGradient id="topL" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFD95A"/>
+      <stop offset="100%" stop-color="#C98600"/>
+    </linearGradient>
+    <linearGradient id="topR" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFD95A"/>
+      <stop offset="100%" stop-color="#C98600"/>
+    </linearGradient>
+    <linearGradient id="botL" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C98600"/>
+      <stop offset="100%" stop-color="#8B5C00"/>
+    </linearGradient>
+    <linearGradient id="botR" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C98600"/>
+      <stop offset="100%" stop-color="#8B5C00"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Top-left arch pane -->
+  <path d="M10 120 L10 54 Q10 10 52 10 Q94 10 94 54 L94 120 Z"
+        fill="url(#topL)"/>
+
+  <!-- Top-right arch pane -->
+  <path d="M106 120 L106 54 Q106 10 148 10 Q190 10 190 54 L190 120 Z"
+        fill="url(#topR)"/>
+
+  <!-- Bottom-left square pane -->
+  <rect x="10" y="128" width="84" height="102" rx="2"
+        fill="url(#botL)"/>
+
+  <!-- Bottom-right square pane -->
+  <rect x="106" y="128" width="84" height="102" rx="2"
+        fill="url(#botR)"/>
+</svg>

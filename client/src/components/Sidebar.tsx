@@ -82,7 +82,7 @@ export default function Sidebar() {
     <aside className="flex h-screen w-64 flex-col" style={{ background: "var(--sidebar)", color: "var(--sidebar-foreground)" }}>
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-4 border-b" style={{ borderColor: "var(--sidebar-border)" }}>
-        <img src="/logo.png" alt="Saint Augustine of Canterbury" className="h-10 w-auto" style={{ filter: "brightness(0) invert(1)" }} />
+        <img src="/logo.png" alt="Saint Augustine of Canterbury" className="h-20 w-auto" style={{ filter: "brightness(0) invert(1)" }} />
       </div>
 
       {/* Navigation */}
