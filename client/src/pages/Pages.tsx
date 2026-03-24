@@ -177,7 +177,7 @@ export default function Pages() {
     formData.append("file", file);
     try {
       const res = await pagesApi.uploadImage(editing.id, formData);
-      setImageUrl(res.data.url);
+      setImageUrl(res.data.imageUrl ?? null);
       toast.success("Image uploaded");
       load();
     } catch {
@@ -216,7 +216,7 @@ export default function Pages() {
     formData.append("file", file);
     try {
       const res = await pagesApi.uploadBodyImage(editing.id, formData);
-      setBodyImageUrl(res.data.url);
+      setBodyImageUrl(res.data.bodyImageUrl ?? null);
       toast.success("Body image uploaded");
       load();
     } catch {
@@ -274,7 +274,7 @@ export default function Pages() {
   };
 
   const frontendBase =
-    (import.meta.env.VITE_FRONTEND_URL as string | undefined) ?? "http://localhost:3000";
+    (import.meta.env.VITE_FRONTEND_URL as string | undefined) ?? "https://st-augustine-frontend.vercel.app";
 
   return (
     <AdminLayout

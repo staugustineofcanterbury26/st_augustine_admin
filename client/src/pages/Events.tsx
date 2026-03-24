@@ -232,7 +232,7 @@ export default function Events() {
     formData.append("file", file);
     try {
       const res = await eventsApi.uploadImage(editing.id, formData);
-      setImageUrl(res.data.url);
+      setImageUrl(res.data.imageUrl ?? null);
       toast.success("Image uploaded");
       load();
     } catch {

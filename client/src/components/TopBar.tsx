@@ -40,7 +40,7 @@ export default function TopBar({ title, description, onOpenSidebar }: TopBarProp
       <div className="flex items-center gap-3">
         {/* Link to public site */}
         <a
-          href={import.meta.env.VITE_FRONTEND_URL ?? "https://your-parish.vercel.app"}
+          href={import.meta.env.VITE_FRONTEND_URL ?? "https://st-augustine-frontend.vercel.app"}
           target="_blank"
           rel="noopener noreferrer"
         >

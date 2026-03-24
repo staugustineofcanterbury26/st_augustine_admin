@@ -108,7 +108,7 @@ export const eventsApi = {
     api.put<Event>(`/api/events/${id}`, data),
   delete: (id: number) => api.delete(`/api/events/${id}`),
   uploadImage: (id: number, formData: FormData) =>
-    api.post<{ url: string }>(`/api/events/${id}/image`, formData, {
+    api.post<Event>(`/api/events/${id}/image`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
 };
@@ -372,11 +372,11 @@ export const pagesApi = {
     api.put<Page>(`/api/pages/${id}`, data),
   delete: (id: number) => api.delete(`/api/pages/${id}`),
   uploadImage: (id: number, formData: FormData) =>
-    api.post<{ url: string }>(`/api/pages/${id}/image`, formData, {
+    api.post<Page>(`/api/pages/${id}/image`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
   uploadBodyImage: (id: number, formData: FormData) =>
-    api.post<{ url: string }>(`/api/pages/${id}/body-image`, formData, {
+    api.post<Page>(`/api/pages/${id}/body-image`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
 };
