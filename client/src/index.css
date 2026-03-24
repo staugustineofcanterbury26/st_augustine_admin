@@ -36,11 +36,24 @@
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
+
+  /* Gold scale — SAoCP_Logo.png stained-glass windows palette (replaces orange) */
+  --color-orange-50:  oklch(0.98 0.015 85);
+  --color-orange-100: oklch(0.95 0.04 84);
+  --color-orange-200: oklch(0.90 0.09 83);
+  --color-orange-300: oklch(0.84 0.14 82);
+  --color-orange-400: oklch(0.78 0.18 80);
+  --color-orange-500: oklch(0.72 0.19 78);
+  --color-orange-600: oklch(0.64 0.17 73);
+  --color-orange-700: oklch(0.55 0.15 67);
+  --color-orange-800: oklch(0.46 0.12 62);
+  --color-orange-900: oklch(0.37 0.09 58);
+  --color-orange-950: oklch(0.28 0.07 55);
 }
 
 :root {
-  /* Clay Orange — matching st_augustine_frontend Sacred Minimalism */
-  --primary: oklch(0.65 0.18 45);
+  /* Golden Amber — derived from SAoCP_Logo.png stained-glass windows */
+  --primary: oklch(0.72 0.19 78);
   --primary-foreground: oklch(1 0 0);
 
   --radius: 0.5rem;
@@ -59,7 +72,7 @@
   --muted: oklch(0.94 0.003 65);
   --muted-foreground: oklch(0.55 0.01 65);
 
-  --accent: oklch(0.65 0.18 45);
+  --accent: oklch(0.72 0.19 78);
   --accent-foreground: oklch(1 0 0);
 
   --destructive: oklch(0.62 0.22 25);
@@ -67,12 +80,12 @@
 
   --border: oklch(0.88 0.004 65);
   --input: oklch(0.88 0.004 65);
-  --ring: oklch(0.65 0.18 45);
+  --ring: oklch(0.72 0.19 78);
 
   /* Dark sidebar — charcoal with warm undertone */
   --sidebar: oklch(0.22 0.025 60);
   --sidebar-foreground: oklch(0.9 0.005 65);
-  --sidebar-primary: oklch(0.65 0.18 45);
+  --sidebar-primary: oklch(0.72 0.19 78);
   --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(0.30 0.03 55);
   --sidebar-accent-foreground: oklch(0.95 0.005 65);

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Lock, Mail, Church } from "lucide-react";
+import { Lock, Mail } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email address"),
@@ -55,16 +55,16 @@ export default function Login() {
       {/* Background cross pattern */}
       <div className="absolute inset-0 opacity-[0.03]" aria-hidden="true"
         style={{
-          backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 40px, oklch(0.65 0.18 45) 40px, oklch(0.65 0.18 45) 41px),
-                            repeating-linear-gradient(90deg, transparent, transparent 40px, oklch(0.65 0.18 45) 40px, oklch(0.65 0.18 45) 41px)`,
+          backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 40px, oklch(0.72 0.19 78) 40px, oklch(0.72 0.19 78) 41px),
+                            repeating-linear-gradient(90deg, transparent, transparent 40px, oklch(0.72 0.19 78) 40px, oklch(0.72 0.19 78) 41px)`,
         }}
       />
 
       <div className="relative w-full max-w-md">
         {/* Brand header */}
         <div className="text-center mb-8">
-          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-lg mb-4">
-            <Church className="h-8 w-8 text-primary-foreground" />
+          <div className="inline-flex items-center justify-center mb-4">
+            <img src="/logo.png" alt="Saint Augustine of Canterbury Parish" className="h-20 w-auto" />
           </div>
           <h1 className="font-playfair text-3xl font-bold text-foreground">
             St. Augustine of Canterbury

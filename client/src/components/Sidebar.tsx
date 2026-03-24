@@ -81,18 +81,8 @@ export default function Sidebar() {
   return (
     <aside className="flex h-screen w-64 flex-col" style={{ background: "var(--sidebar)", color: "var(--sidebar-foreground)" }}>
       {/* Logo */}
-      <div className="flex items-center gap-3 px-6 py-5 border-b" style={{ borderColor: "var(--sidebar-border)" }}>
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: "var(--sidebar-primary)" }}>
-          <Church className="h-5 w-5" style={{ color: "var(--sidebar-primary-foreground)" }} />
-        </div>
-        <div>
-          <p className="text-sm font-semibold leading-none font-playfair" style={{ color: "var(--sidebar-foreground)" }}>
-            St. Augustine
-          </p>
-          <p className="text-xs mt-0.5" style={{ color: "oklch(0.6 0.01 65)" }}>
-            Admin Portal
-          </p>
-        </div>
+      <div className="flex items-center gap-3 px-4 py-4 border-b" style={{ borderColor: "var(--sidebar-border)" }}>
+        <img src="/logo.png" alt="Saint Augustine of Canterbury" className="h-10 w-auto" style={{ filter: "brightness(0) invert(1)" }} />
       </div>
 
       {/* Navigation */}
