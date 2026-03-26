@@ -291,9 +291,59 @@ export default function Pages() {
     }
   };
 
-  const frontendBase =
-    (import.meta.env.VITE_FRONTEND_URL as string | undefined) ??
-    (typeof window !== "undefined" ? window.location.origin : "https://st-augustine-frontend.vercel.app");
+  const [frontendBase, setFrontendBase] = useState<string>(() => {
+    const env = import.meta.env.VITE_FRONTEND_URL as string | undefined;
+    if (env && env.length > 0) return env;
+    if (typeof window === "undefined") return "https://st-augustine-frontend.vercel.app";
+    // optimistic default while we probe common dev ports
+    return window.location.origin;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const env = import.meta.env.VITE_FRONTEND_URL as string | undefined;
+    if (env && env.length > 0) {
+      setFrontendBase(env);
+      return;
+    }
+
+    const proto = window.location.protocol;
+    const host = window.location.hostname;
+
+    // Only probe common dev ports when admin is running locally
+    if (host !== "localhost" && host !== "127.0.0.1") {
+      setFrontendBase(window.location.origin);
+      return;
+    }
+
+    const ports = [3000, 5173, 5174, 5175, 8080];
+
+    let cancelled = false;
+
+    async function probe() {
+      const timeoutMs = 700;
+      for (const port of ports) {
+        const url = `${proto}//${host}:${port}/index.html`;
+        try {
+          const controller = new AbortController();
+          const id = setTimeout(() => controller.abort(), timeoutMs);
+          // mode 'no-cors' lets us detect that a server answered without requiring CORS
+          await fetch(url, { mode: "no-cors", signal: controller.signal });
+          clearTimeout(id);
+          if (cancelled) return;
+          setFrontendBase(`${proto}//${host}:${port}`);
+          return;
+        } catch {
+          // try next port
+        }
+      }
+      if (!cancelled) setFrontendBase(`${proto}//${host}:3000`); // fallback to 3000
+    }
+
+    probe();
+
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <AdminLayout
