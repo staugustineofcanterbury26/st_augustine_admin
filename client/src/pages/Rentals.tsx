@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm, useFieldArray, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -65,6 +65,49 @@ export default function Rentals() {
   const form = useForm<RentalForm>({ resolver: zodResolver(schema) as Resolver<RentalForm>, defaultValues: formDefault() });
   const amenitiesField = useFieldArray({ control: form.control, name: "amenities" });
   const imagesField = useFieldArray({ control: form.control, name: "imageUrls" });
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleFilesUpload = async (files: FileList | null) => {
+    if (!files) return;
+    const maxFiles = 8;
+    const maxSize = 3 * 1024 * 1024; // 3MB
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
+
+    const currentCount = imagesField.fields.length;
+    if (currentCount >= maxFiles) {
+      toast.error(`Maximum ${maxFiles} photos allowed`);
+      return;
+    }
+
+    const toUpload = Array.from(files).slice(0, maxFiles - currentCount);
+
+    for (const file of toUpload) {
+      if (!allowed.includes(file.type)) {
+        toast.error("Invalid file type");
+        continue;
+      }
+      if (file.size > maxSize) {
+        toast.error("File is too large (max 3MB)");
+        continue;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      try {
+        const res = await rentalsApi.uploadImage(formData);
+        const url = res.data?.url ?? (res.data as any)?.url;
+        if (url) {
+          imagesField.append({ value: url });
+          toast.success("Photo uploaded");
+        } else {
+          toast.error("Upload failed: no URL returned");
+        }
+      } catch (err) {
+        toast.error("Failed to upload photo");
+      }
+    }
+  };
 
   const load = () => {
     setIsLoading(true);
@@ -258,6 +301,63 @@ export default function Rentals() {
                 onCheckedChange={(v) => form.setValue("isAvailable", v)}
               />
               <Label htmlFor="isAvailable">Available for booking</Label>
+            </div>
+            <div className="space-y-2">
+              <Label>Photos</Label>
+              <input
+                ref={(el) => { fileInputRef.current = el }}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                multiple
+                className="hidden"
+                onChange={(e) => void handleFilesUpload(e.target.files)}
+              />
+              <div className="flex gap-2 items-center">
+                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                  + Add Photo
+                </Button>
+                <p className="text-sm text-muted-foreground">Max 8 photos, each ≤ 3MB</p>
+              </div>
+              {imagesField.fields.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No photos yet.</p>
+              ) : (
+                <div className="grid grid-cols-4 gap-2">
+                  {imagesField.fields.map((f, i) => (
+                    <div key={f.id} className="relative border rounded overflow-hidden">
+                      <img src={f.value} alt={`Photo ${i + 1}`} className="w-full h-24 object-cover" />
+                      <div className="absolute top-1 right-1 flex gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => imagesField.remove(i)}
+                          title="Remove photo"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                      <div className="flex justify-between p-1 text-xs">
+                        <button
+                          type="button"
+                          disabled={i === 0}
+                          onClick={() => imagesField.move(i, i - 1)}
+                          className="text-muted-foreground disabled:opacity-50"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          disabled={i === imagesField.fields.length - 1}
+                          onClick={() => imagesField.move(i, i + 1)}
+                          className="text-muted-foreground disabled:opacity-50"
+                        >
+                          ↓
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>

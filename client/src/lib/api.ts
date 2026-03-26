@@ -266,6 +266,11 @@ export const rentalsApi = {
   update: (id: number, data: Partial<Omit<RentalSpace, "id" | "updatedAt">>) =>
     api.put<RentalSpace>(`/api/rentals/${id}`, data),
   delete: (id: number) => api.delete(`/api/rentals/${id}`),
+  // Reuse central gallery upload endpoint to store rental images and return gallery image metadata
+  uploadImage: (formData: FormData) =>
+    api.post<GalleryImage>("/api/gallery/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
 };
 
 // ── Get Involved / Ministries ─────────────────────────────────────────────────
