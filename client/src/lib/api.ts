@@ -374,6 +374,7 @@ export type PageInput = Omit<Page, "id" | "createdAt" | "updatedAt" | "imageUrl"
 export const pagesApi = {
   getAll: () => api.get<Page[]>("/api/pages"),
   getBySlug: (slug: string) => api.get<Page>(`/api/pages/${slug}`),
+  getPreviewToken: (slug: string) => api.post<{ previewToken: string }>(`/api/pages/preview-token`, { slug }),
   create: (data: Omit<PageInput, "slug"> & { slug?: string }) =>
     api.post<Page>("/api/pages", data),
   update: (id: number, data: Partial<PageInput>) =>

@@ -292,7 +292,8 @@ export default function Pages() {
   };
 
   const frontendBase =
-    (import.meta.env.VITE_FRONTEND_URL as string | undefined) ?? "https://st-augustine-frontend.vercel.app";
+    (import.meta.env.VITE_FRONTEND_URL as string | undefined) ??
+    (typeof window !== "undefined" ? window.location.origin : "https://st-augustine-frontend.vercel.app");
 
   return (
     <AdminLayout
@@ -385,16 +386,21 @@ export default function Pages() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        asChild
                         title="Preview page"
+                        onClick={async () => {
+                          try {
+                            const res = await pagesApi.getPreviewToken(page.slug);
+                            const token = res.data.previewToken;
+                            const url = `${frontendBase}/pages/${page.slug}?previewToken=${encodeURIComponent(
+                              token
+                            )}`;
+                            window.open(url, "_blank", "noopener,noreferrer");
+                          } catch {
+                            toast.error("Failed to get preview token");
+                          }
+                        }}
                       >
-                        <a
-                          href={`${frontendBase}/pages/${page.slug}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
+                        <ExternalLink className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"

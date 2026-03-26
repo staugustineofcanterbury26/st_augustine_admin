@@ -116,23 +116,7 @@ export default function Sacraments() {
                         onChange={(e) => setField(s.id, "requirements", e.target.value)}
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>Process / Steps (optional)</Label>
-                      <Textarea
-                        rows={3}
-                        placeholder="Steps to register or participate…"
-                        value={d.process ?? ""}
-                        onChange={(e) => setField(s.id, "process", e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Contact Info (optional)</Label>
-                      <Input
-                        placeholder="e.g. Contact the parish office at …"
-                        value={d.contactInfo ?? ""}
-                        onChange={(e) => setField(s.id, "contactInfo", e.target.value)}
-                      />
-                    </div>
+                    {/* Process and contact info are managed via public pages; removed from sacrament admin UI */}
                     <div className="flex justify-end">
                       <Button
                         onClick={() => void save(s)}
