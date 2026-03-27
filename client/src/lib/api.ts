@@ -402,14 +402,23 @@ export interface ContactMessageRecord {
   isRead: boolean;
   createdAt: string;
 }
-
 export const contactMessagesApi = {
   getAll: () => api.get<ContactMessageRecord[]>("/api/contact-messages"),
   getById: (id: number) => api.get<ContactMessageRecord>(`/api/contact-messages/${id}`),
   update: (id: number, data: Partial<Pick<ContactMessageRecord, "isRead"> | Record<string, unknown>>) =>
     api.put<ContactMessageRecord>(`/api/contact-messages/${id}`, data),
   delete: (id: number) => api.delete(`/api/contact-messages/${id}`),
+  getStats: () => api.get<ContactMessagesStats>("/api/contact-messages/stats"),
 };
+
+export interface ContactMessagesStats {
+  total: number;
+  unread: number;
+  recent: ContactMessageRecord[];
+  byDayLast14: { date: string; count: number }[];
+}
+
+// stats endpoint available via contactMessagesApi.getStats
 
 // ── Users ─────────────────────────────────────────────────────────────────────
 

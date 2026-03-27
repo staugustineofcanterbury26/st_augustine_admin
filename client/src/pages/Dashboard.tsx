@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import AdminLayout from "@/components/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { dashboardApi, type DashboardStats } from "@/lib/api";
+import { dashboardApi, type DashboardStats, contactMessagesApi, type ContactMessagesStats } from "@/lib/api";
 import {
   CalendarDays,
   Images,
@@ -10,6 +10,7 @@ import {
   Clock,
   TrendingUp,
   AlertCircle,
+  Mail,
 } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { Link } from "wouter";
@@ -25,11 +26,14 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [msgStats, setMsgStats] = useState<ContactMessagesStats | null>(null);
 
   useEffect(() => {
-    dashboardApi
-      .getStats()
-      .then((res) => setStats(res.data))
+    Promise.all([dashboardApi.getStats(), contactMessagesApi.getStats()])
+      .then(([dRes, mRes]) => {
+        setStats(dRes.data);
+        setMsgStats(mRes.data);
+      })
       .catch(() => setError(true))
       .finally(() => setIsLoading(false));
   }, []);
@@ -82,6 +86,13 @@ export default function Dashboard() {
                 sub="archived PDFs"
                 icon={<FileText className="h-5 w-5 text-green-600" />}
                 iconBg="bg-green-50"
+              />
+              <StatCard
+                title="Unread Messages"
+                value={msgStats?.unread ?? 0}
+                sub={`${msgStats?.total ?? 0} total`}
+                icon={<Mail className="h-5 w-5 text-rose-600" />}
+                iconBg="bg-rose-50"
               />
               <StatCard
                 title="Last Updated"

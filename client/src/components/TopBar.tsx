@@ -1,4 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -8,8 +9,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, KeyRound, ExternalLink, Menu } from "lucide-react";
+import { LogOut, User, KeyRound, ExternalLink, Menu, Mail } from "lucide-react";
 import { Link } from "wouter";
+import { contactMessagesApi } from "@/lib/api";
 
 interface TopBarProps {
   title: string;
@@ -19,6 +21,24 @@ interface TopBarProps {
 
 export default function TopBar({ title, description, onOpenSidebar }: TopBarProps) {
   const { user, logout } = useAuth();
+  const [unread, setUnread] = useState<number | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    contactMessagesApi
+      .getStats()
+      .then((res) => {
+        if (!mounted) return;
+        setUnread(res.data.unread ?? 0);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setUnread(0);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <header className="flex items-center justify-between border-b bg-card px-6 py-4">
@@ -39,6 +59,16 @@ export default function TopBar({ title, description, onOpenSidebar }: TopBarProp
 
       <div className="flex items-center gap-3">
         {/* Link to public site */}
+        <Link href="/contact-messages">
+          <Button variant="ghost" size="sm" className="relative gap-2">
+            <Mail className="h-3 w-3" />
+            {unread && unread > 0 ? (
+              <span className="absolute -top-1 -right-2 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-semibold text-white bg-rose-600 rounded-full">
+                {unread > 99 ? "99+" : unread}
+              </span>
+            ) : null}
+          </Button>
+        </Link>
         <a
           href={import.meta.env.VITE_FRONTEND_URL ?? "https://st-augustine-frontend.vercel.app"}
           target="_blank"
