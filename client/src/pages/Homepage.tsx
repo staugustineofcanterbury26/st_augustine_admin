@@ -124,6 +124,12 @@ export default function Homepage() {
     return { imageUrl: res.data.heroImageUrl };
   };
 
+  const handleHeroImageGallerySelect = async (url: string) => {
+    const res = await homepageApi.updateHero({ heroImageUrl: url });
+    setData((prev) => (prev ? { ...prev, hero: res.data } : null));
+    return { imageUrl: res.data.heroImageUrl };
+  };
+
   const handleHeroImageDelete = async () => {
     await homepageApi.deleteImage();
     setData((prev) =>
@@ -140,6 +146,12 @@ export default function Homepage() {
     const formData = new FormData();
     formData.append("file", file);
     const res = await homepageApi.uploadVideo(formData);
+    setData((prev) => (prev ? { ...prev, hero: res.data } : null));
+    return { heroVideoUrl: res.data.heroVideoUrl ?? "" };
+  };
+
+  const handleHeroVideoGallerySelect = async (url: string): Promise<{ heroVideoUrl: string }> => {
+    const res = await homepageApi.updateHero({ heroVideoUrl: url });
     setData((prev) => (prev ? { ...prev, hero: res.data } : null));
     return { heroVideoUrl: res.data.heroVideoUrl ?? "" };
   };
@@ -219,6 +231,7 @@ export default function Homepage() {
                 label="Fallback Image (Hero)"
                 currentUrl={data?.hero.heroImageUrl}
                 onUpload={handleHeroImageUpload}
+                onGallerySelect={handleHeroImageGallerySelect}
                 onDelete={handleHeroImageDelete}
                 maxSizeMb={1}
                 helpText="Required. Shown when video is unavailable."
@@ -229,6 +242,7 @@ export default function Homepage() {
                 label="Hero Video"
                 currentUrl={data?.hero.heroVideoUrl}
                 onUpload={handleHeroVideoUpload}
+                onGallerySelect={handleHeroVideoGallerySelect}
                 onDelete={handleHeroVideoDelete}
                 maxSizeMb={5}
                 helpText="Optional. Plays on the hero banner with fallback image."

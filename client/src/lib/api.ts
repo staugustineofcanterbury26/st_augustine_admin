@@ -501,7 +501,7 @@ export interface HomepageData {
 export const homepageApi = {
   get: () => api.get<HomepageData>("/api/homepage"),
   getAdmin: () => api.get<HomepageData>("/api/homepage/admin"),
-  updateHero: (data: Partial<Omit<HomepageContent, "id" | "updatedAt" | "heroVideoUrl" | "heroImageUrl">>) =>
+  updateHero: (data: Partial<Omit<HomepageContent, "id" | "updatedAt">>) =>
     api.put<HomepageContent>("/api/homepage/hero", data),
   uploadImage: (formData: FormData) =>
     api.post<HomepageContent>("/api/homepage/hero/image", formData, {

@@ -71,6 +71,7 @@ export function ImageUpload({
     setUploading(true);
     try {
       const res = await onUpload(file);
+      setPreviewUrl(res.imageUrl || previewUrl);
       toast.success("Image uploaded");
     } catch (err) {
       toast.error("Failed to upload image");
