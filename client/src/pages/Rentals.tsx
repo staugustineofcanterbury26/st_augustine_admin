@@ -19,8 +19,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { rentalsApi, type RentalSpace } from "@/lib/api";
-import { Plus, Pencil, Trash2, Building2 } from "lucide-react";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { ImageGallerySelector } from "@/components/uploads/ImageGallerySelector";
+import { rentalsApi, galleryApi, type RentalSpace, type GalleryImage } from "@/lib/api";
+import { Plus, Pencil, Trash2, Building2, Images } from "lucide-react";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -61,6 +68,7 @@ export default function Rentals() {
   const [editing, setEditing] = useState<RentalSpace | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
 
   const form = useForm<RentalForm>({ resolver: zodResolver(schema) as Resolver<RentalForm>, defaultValues: formDefault() });
   const amenitiesField = useFieldArray({ control: form.control, name: "amenities" });
@@ -107,6 +115,27 @@ export default function Rentals() {
         toast.error("Failed to upload photo");
       }
     }
+  };
+
+  const handleGalleryImageSelect = async (galleryImage: GalleryImage) => {
+    const maxFiles = 8;
+    const currentCount = imagesField.fields.length;
+    
+    if (currentCount >= maxFiles) {
+      toast.error(`Maximum ${maxFiles} photos allowed`);
+      return;
+    }
+    
+    // Check if image already in list
+    if (imagesField.fields.some((f) => f.value === galleryImage.url)) {
+      toast.error("Photo already added");
+      setGalleryOpen(false);
+      return;
+    }
+    
+    imagesField.append({ value: galleryImage.url });
+    toast.success("Photo added from gallery");
+    setGalleryOpen(false);
   };
 
   const load = () => {
@@ -312,9 +341,13 @@ export default function Rentals() {
                 className="hidden"
                 onChange={(e) => void handleFilesUpload(e.target.files)}
               />
-              <div className="flex gap-2 items-center">
+              <div className="flex gap-2 items-center flex-wrap">
                 <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
                   + Add Photo
+                </Button>
+                <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => setGalleryOpen(true)}>
+                  <Images className="h-4 w-4" />
+                  Browse Gallery
                 </Button>
                 <p className="text-sm text-muted-foreground">Max 8 photos, each ≤ 3MB</p>
               </div>
@@ -359,6 +392,14 @@ export default function Rentals() {
                 </div>
               )}
             </div>
+            
+            {/* Gallery selector */}
+            <ImageGallerySelector
+              open={galleryOpen}
+              onClose={() => setGalleryOpen(false)}
+              onSelect={handleGalleryImageSelect}
+            />
+
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={saving} className="bg-primary hover:bg-primary/90">

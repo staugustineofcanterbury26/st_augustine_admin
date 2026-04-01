@@ -10,8 +10,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { priestApi, galleryApi, type PriestProfile, type GalleryImage } from "@/lib/api";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { priestApi, type PriestProfile, type GalleryImage } from "@/lib/api";
 import { Upload, UserCircle, Images } from "lucide-react";
+import { ImageGallerySelector } from "@/components/uploads/ImageGallerySelector";
 
 const schema = z.object({
   name: z.string().min(1),
@@ -30,10 +37,7 @@ export default function Priest() {
   const [saving, setSaving] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [showGalleryModal, setShowGalleryModal] = useState(false);
-  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
-  const [loadingGallery, setLoadingGallery] = useState(false);
-  const [selectingFromGallery, setSelectingFromGallery] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<PriestForm>({
@@ -106,29 +110,17 @@ export default function Priest() {
     }
   };
 
-  const loadGalleryImages = async () => {
-    setLoadingGallery(true);
-    try {
-      const res = await galleryApi.getAll();
-      setGalleryImages(res.data);
-    } catch {
-      toast.error("Failed to load gallery images");
-    } finally {
-      setLoadingGallery(false);
-    }
-  };
-
-  const handleSelectFromGallery = async (galleryImage: GalleryImage) => {
-    setSelectingFromGallery(true);
+  const handlePhotoGallerySelect = async (galleryImage: GalleryImage) => {
+    setUploadingPhoto(true);
     try {
       const res = await priestApi.setPhotoFromGallery(galleryImage.id);
       setPhotoUrl(res.data.photoUrl ?? null);
-      setShowGalleryModal(false);
+      setGalleryOpen(false);
       toast.success("Photo updated from gallery");
     } catch {
       toast.error("Failed to set photo from gallery");
     } finally {
-      setSelectingFromGallery(false);
+      setUploadingPhoto(false);
     }
   };
 
@@ -176,33 +168,35 @@ export default function Priest() {
                 className="hidden"
                 onChange={handlePhotoUpload}
               />
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingPhoto}
-                  className="gap-2"
-                >
-                  <Upload className="h-4 w-4" />
-                  {uploadingPhoto ? "Uploading…" : "Upload Photo"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setShowGalleryModal(true);
-                    if (galleryImages.length === 0) {
-                      loadGalleryImages();
-                    }
-                  }}
-                  disabled={selectingFromGallery}
-                  className="gap-2"
-                >
-                  <Images className="h-4 w-4" />
-                  {selectingFromGallery ? "Selecting…" : "From Gallery"}
-                </Button>
-              </div>
+              <Tabs defaultValue="upload" className="w-full max-w-xs">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="upload">Upload</TabsTrigger>
+                  <TabsTrigger value="gallery">From Gallery</TabsTrigger>
+                </TabsList>
+                <TabsContent value="upload" className="mt-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2 w-full"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingPhoto}
+                  >
+                    <Upload className="h-4 w-4" />
+                    {uploadingPhoto ? "Uploading…" : "Upload Photo"}
+                  </Button>
+                </TabsContent>
+                <TabsContent value="gallery" className="mt-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2 w-full"
+                    onClick={() => setGalleryOpen(true)}
+                  >
+                    <Images className="h-4 w-4" />
+                    Browse Gallery
+                  </Button>
+                </TabsContent>
+              </Tabs>
             </div>
           </CardContent>
         </Card>
@@ -270,55 +264,12 @@ export default function Priest() {
         </div>
       </form>
 
-      {/* Gallery Selection Modal */}
-      {showGalleryModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-2xl max-h-[80vh] flex flex-col">
-            <CardHeader>
-              <CardTitle className="text-base">Select Photo from Gallery</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto">
-              {loadingGallery ? (
-                <div className="text-center text-muted-foreground">Loading images…</div>
-              ) : galleryImages.length === 0 ? (
-                <div className="text-center text-muted-foreground">No gallery images available</div>
-              ) : (
-                <div className="grid grid-cols-3 gap-4">
-                  {galleryImages.map((image) => (
-                    <div
-                      key={image.id}
-                      className="relative group cursor-pointer overflow-hidden rounded-lg border border-border hover:border-primary transition-colors"
-                      onClick={() => handleSelectFromGallery(image)}
-                    >
-                      <img
-                        src={image.thumbnailUrl || image.url}
-                        alt={image.title}
-                        className="w-full aspect-square object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-colors">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          disabled={selectingFromGallery}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          Select
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-            <div className="border-t p-4 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowGalleryModal(false)}>
-                Cancel
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
+      {/* Gallery selector modal */}
+      <ImageGallerySelector
+        open={galleryOpen}
+        onClose={() => setGalleryOpen(false)}
+        onSelect={handlePhotoGallerySelect}
+      />
     </AdminLayout>
   );
 }

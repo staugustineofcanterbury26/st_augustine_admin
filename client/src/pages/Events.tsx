@@ -27,9 +27,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { eventsApi, pastoralUnitApi, type Event } from "@/lib/api";
-import { Plus, Pencil, Trash2, Calendar, CalendarDays, ImagePlus, X } from "lucide-react";
+import { eventsApi, pastoralUnitApi, galleryApi, type Event, type GalleryImage } from "@/lib/api";
+import { Plus, Pencil, Trash2, Calendar, CalendarDays, ImagePlus, X, Images } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { ImageGallerySelector } from "@/components/uploads/ImageGallerySelector";
 
 /** Sort events chronologically: ISO date strings first (earliest → latest), then time within same day. Non-ISO dates (recurring) sort last. */
 function sortByDateTime(a: Event, b: Event): number {
@@ -140,6 +141,7 @@ export default function Events() {
   // Image upload
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<EventForm>({
@@ -252,6 +254,22 @@ export default function Events() {
       load();
     } catch {
       toast.error("Failed to remove image");
+    }
+  };
+
+  const handleGalleryImageSelect = async (galleryImage: GalleryImage) => {
+    if (!editing) return;
+    setUploadingImage(true);
+    try {
+      await eventsApi.update(editing.id, { imageUrl: galleryImage.url });
+      setImageUrl(galleryImage.url);
+      setGalleryOpen(false);
+      toast.success("Image selected from gallery");
+      load();
+    } catch {
+      toast.error("Failed to set image from gallery");
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -481,27 +499,59 @@ export default function Events() {
                 )}
                 {editing && (
                   <>
-                    <input
-                      ref={imageInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageUpload}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      disabled={uploadingImage}
-                      onClick={() => imageInputRef.current?.click()}
-                    >
-                      <ImagePlus className="h-4 w-4 mr-1.5" />
-                      {uploadingImage ? "Uploading…" : imageUrl ? "Replace Image" : "Upload Image"}
-                    </Button>
+                    <Tabs defaultValue="upload" className="w-full">
+                      <TabsList className="grid w-full grid-cols-2 h-auto mb-3">
+                        <TabsTrigger value="upload" className="flex items-center gap-1.5 text-xs">
+                          <ImagePlus className="h-3.5 w-3.5" />
+                          Upload
+                        </TabsTrigger>
+                        <TabsTrigger value="gallery" className="flex items-center gap-1.5 text-xs">
+                          <Images className="h-3.5 w-3.5" />
+                          Gallery
+                        </TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="upload" className="space-y-2 mt-3">
+                        <input
+                          ref={imageInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleImageUpload}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          disabled={uploadingImage}
+                          onClick={() => imageInputRef.current?.click()}
+                        >
+                          <ImagePlus className="h-4 w-4 mr-1.5" />
+                          {uploadingImage ? "Uploading…" : imageUrl ? "Replace Image" : "Upload Image"}
+                        </Button>
+                      </TabsContent>
+                      <TabsContent value="gallery" className="space-y-2 mt-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          disabled={uploadingImage}
+                          onClick={() => setGalleryOpen(true)}
+                        >
+                          <Images className="h-4 w-4 mr-1.5" />
+                          Browse Gallery
+                        </Button>
+                      </TabsContent>
+                    </Tabs>
                   </>
                 )}
               </div>
+              <ImageGallerySelector
+                open={galleryOpen}
+                onClose={() => setGalleryOpen(false)}
+                onSelect={handleGalleryImageSelect}
+              />
             </div>
 
             <div className="space-y-3">

@@ -19,6 +19,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
   Table,
   TableBody,
   TableCell,
@@ -26,9 +32,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { pagesApi, type Page } from "@/lib/api";
-import { Plus, Pencil, Trash2, Globe, EyeOff, ExternalLink, ImagePlus, X } from "lucide-react";
+import { pagesApi, type Page, galleryApi, type GalleryImage } from "@/lib/api";
+import { Plus, Pencil, Trash2, Globe, EyeOff, ExternalLink, ImagePlus, X, Images } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
+import { ImageGallerySelector } from "@/components/uploads/ImageGallerySelector";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -94,10 +101,12 @@ export default function Pages() {
   const [previewSlug, setPreviewSlug] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [galleryOpenImage, setGalleryOpenImage] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [bodyImageUrl, setBodyImageUrl] = useState<string | null>(null);
   const [bodyImageCaption, setBodyImageCaption] = useState("");
   const [uploadingBodyImage, setUploadingBodyImage] = useState(false);
+  const [galleryOpenBody, setGalleryOpenBody] = useState(false);
   const bodyImageInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<PageForm>({
@@ -264,6 +273,38 @@ export default function Pages() {
       await pagesApi.update(editing.id, { bodyImageCaption: bodyImageCaption || null });
     } catch {
       // silent — non-critical
+    }
+  };
+
+  const handleHeroImageGallerySelect = async (galleryImage: GalleryImage) => {
+    if (!editing) return;
+    setUploadingImage(true);
+    try {
+      await pagesApi.update(editing.id, { imageUrl: galleryImage.url });
+      setImageUrl(galleryImage.url);
+      setGalleryOpenImage(false);
+      toast.success("Hero image selected from gallery");
+      load();
+    } catch {
+      toast.error("Failed to set hero image from gallery");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleBodyImageGallerySelect = async (galleryImage: GalleryImage) => {
+    if (!editing) return;
+    setUploadingBodyImage(true);
+    try {
+      await pagesApi.update(editing.id, { bodyImageUrl: galleryImage.url });
+      setBodyImageUrl(galleryImage.url);
+      setGalleryOpenBody(false);
+      toast.success("Body image selected from gallery");
+      load();
+    } catch {
+      toast.error("Failed to set body image from gallery");
+    } finally {
+      setUploadingBodyImage(false);
     }
   };
 
@@ -605,11 +646,26 @@ export default function Pages() {
                 {editing && (
                   <>
                     <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                    <Button type="button" variant="outline" size="sm" className="gap-2 w-full" disabled={uploadingImage}
-                      onClick={() => imageInputRef.current?.click()}>
-                      <ImagePlus className="h-4 w-4" />
-                      {uploadingImage ? "Uploading…" : imageUrl ? "Replace" : "Upload hero"}
-                    </Button>
+                    <Tabs defaultValue="upload" className="w-full">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="upload">Upload</TabsTrigger>
+                        <TabsTrigger value="gallery">From Gallery</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="upload" className="mt-3">
+                        <Button type="button" variant="outline" size="sm" className="gap-2 w-full" disabled={uploadingImage}
+                          onClick={() => imageInputRef.current?.click()}>
+                          <ImagePlus className="h-4 w-4" />
+                          {uploadingImage ? "Uploading…" : imageUrl ? "Replace" : "Upload hero"}
+                        </Button>
+                      </TabsContent>
+                      <TabsContent value="gallery" className="mt-3">
+                        <Button type="button" variant="outline" size="sm" className="gap-2 w-full"
+                          onClick={() => setGalleryOpenImage(true)}>
+                          <Images className="h-4 w-4" />
+                          Browse gallery
+                        </Button>
+                      </TabsContent>
+                    </Tabs>
                   </>
                 )}
               </div>
@@ -635,11 +691,26 @@ export default function Pages() {
                 {editing && (
                   <>
                     <input ref={bodyImageInputRef} type="file" accept="image/*" className="hidden" onChange={handleBodyImageUpload} />
-                    <Button type="button" variant="outline" size="sm" className="gap-2 w-full" disabled={uploadingBodyImage}
-                      onClick={() => bodyImageInputRef.current?.click()}>
-                      <ImagePlus className="h-4 w-4" />
-                      {uploadingBodyImage ? "Uploading…" : bodyImageUrl ? "Replace" : "Upload body"}
-                    </Button>
+                    <Tabs defaultValue="upload" className="w-full">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="upload">Upload</TabsTrigger>
+                        <TabsTrigger value="gallery">From Gallery</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="upload" className="mt-3">
+                        <Button type="button" variant="outline" size="sm" className="gap-2 w-full" disabled={uploadingBodyImage}
+                          onClick={() => bodyImageInputRef.current?.click()}>
+                          <ImagePlus className="h-4 w-4" />
+                          {uploadingBodyImage ? "Uploading…" : bodyImageUrl ? "Replace" : "Upload body"}
+                        </Button>
+                      </TabsContent>
+                      <TabsContent value="gallery" className="mt-3">
+                        <Button type="button" variant="outline" size="sm" className="gap-2 w-full"
+                          onClick={() => setGalleryOpenBody(true)}>
+                          <Images className="h-4 w-4" />
+                          Browse gallery
+                        </Button>
+                      </TabsContent>
+                    </Tabs>
                   </>
                 )}
                 {bodyImageUrl && editing && (
@@ -735,6 +806,18 @@ export default function Pages() {
                 <Input {...form.register("navLabel")} placeholder={form.watch("title")} />
               </div>
             )}
+
+            {/* Gallery selectors */}
+            <ImageGallerySelector 
+              open={galleryOpenImage} 
+              onClose={() => setGalleryOpenImage(false)}
+              onSelect={handleHeroImageGallerySelect}
+            />
+            <ImageGallerySelector 
+              open={galleryOpenBody} 
+              onClose={() => setGalleryOpenBody(false)}
+              onSelect={handleBodyImageGallerySelect}
+            />
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>

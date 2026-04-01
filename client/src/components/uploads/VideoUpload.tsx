@@ -3,7 +3,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Upload, X, Play } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Upload, X, Play, Video } from "lucide-react";
+import { VideoGallerySelector } from "./VideoGallerySelector";
+import { type GalleryImage } from "@/lib/api";
 
 interface VideoUploadProps {
   /** Label for the form field */
@@ -12,6 +15,8 @@ interface VideoUploadProps {
   currentUrl?: string | null;
   /** Callback when file is selected for upload */
   onUpload: (file: File) => Promise<{ heroVideoUrl: string }>;
+  /** Callback when gallery video is selected */
+  onGallerySelect?: (url: string) => Promise<{ heroVideoUrl: string }>;
   /** Callback when delete is clicked */
   onDelete?: () => Promise<void>;
   /** Max file size in MB */
@@ -24,6 +29,7 @@ export function VideoUpload({
   label,
   currentUrl,
   onUpload,
+  onGallerySelect,
   onDelete,
   maxSizeMb = 5,
   helpText,
@@ -31,6 +37,7 @@ export function VideoUpload({
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [videoDuration, setVideoDuration] = useState<number | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -92,6 +99,22 @@ export function VideoUpload({
     }
   };
 
+  const handleGallerySelect = async (video: GalleryImage) => {
+    if (onGallerySelect) {
+      setUploading(true);
+      try {
+        const res = await onGallerySelect(video.url);
+        toast.success("Video updated from gallery");
+      } catch (err) {
+        toast.error("Failed to select video from gallery");
+      } finally {
+        setUploading(false);
+      }
+    } else {
+      toast.success("Video selected from gallery");
+    }
+  };
+
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -125,42 +148,90 @@ export function VideoUpload({
           </div>
         )}
 
-        <div className="flex gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="video/*"
-            onChange={handleFile}
-            disabled={uploading}
-            className="hidden"
-          />
-          <Button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            variant="outline"
-            size="sm"
-            className="flex-1"
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            {uploading ? "Uploading..." : "Choose Video"}
-          </Button>
+        <Tabs defaultValue="upload" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="upload" className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              Upload
+            </TabsTrigger>
+            <TabsTrigger value="gallery" className="flex items-center gap-2">
+              <Video className="h-4 w-4" />
+              From Gallery
+            </TabsTrigger>
+          </TabsList>
 
-          {currentUrl && onDelete && (
+          <TabsContent value="upload" className="space-y-3">
+            <div className="flex gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="video/*"
+                onChange={handleFile}
+                disabled={uploading}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                variant="outline"
+                size="sm"
+                className="flex-1"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {uploading ? "Uploading..." : "Choose Video"}
+              </Button>
+
+              {currentUrl && onDelete && (
+                <Button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  variant="destructive"
+                  size="sm"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+
+            {helpText && <p className="text-xs text-muted-foreground">{helpText}</p>}
+            <p className="text-xs text-muted-foreground">Max {maxSizeMb}MB (H.264 MP4 recommended)</p>
+          </TabsContent>
+
+          <TabsContent value="gallery" className="space-y-3">
             <Button
               type="button"
-              onClick={handleDelete}
-              disabled={deleting}
-              variant="destructive"
+              onClick={() => setGalleryOpen(true)}
+              disabled={uploading}
+              variant="outline"
               size="sm"
+              className="w-full"
             >
-              <X className="h-4 w-4" />
+              <Video className="h-4 w-4 mr-2" />
+              Browse Gallery
             </Button>
-          )}
-        </div>
+            {currentUrl && onDelete && (
+              <Button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                variant="destructive"
+                size="sm"
+                className="w-full"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Clear
+              </Button>
+            )}
+          </TabsContent>
+        </Tabs>
 
-        {helpText && <p className="text-xs text-muted-foreground mt-2">{helpText}</p>}
-        <p className="text-xs text-muted-foreground mt-1">Max {maxSizeMb}MB (H.264 MP4 recommended)</p>
+        <VideoGallerySelector
+          open={galleryOpen}
+          onClose={() => setGalleryOpen(false)}
+          onSelect={handleGallerySelect}
+        />
       </CardContent>
     </Card>
   );
