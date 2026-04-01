@@ -183,6 +183,8 @@ export interface ParishInfo {
   instagramUrl?: string;
   missionStatement: string;
   welcomeMessage: string;
+  missionTagline: string;
+  missionDescription: string;
   updatedAt: string;
 }
 

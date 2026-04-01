@@ -27,6 +27,8 @@ const schema = z.object({
   instagramUrl: z.union([z.literal(""), z.string().url()]).nullish().transform(val => (val && val.length > 0 ? val : null)),
   missionStatement: z.string().min(1),
   welcomeMessage: z.string().min(1),
+  missionTagline: z.string().min(1),
+  missionDescription: z.string().min(1),
 });
 
 type ParishInfoForm = z.infer<typeof schema>;
@@ -51,6 +53,8 @@ export default function ParishInfo() {
       instagramUrl: "",
       missionStatement: "",
       welcomeMessage: "",
+      missionTagline: "",
+      missionDescription: "",
     },
   });
 
@@ -72,6 +76,8 @@ export default function ParishInfo() {
           instagramUrl: res.data.instagramUrl ?? "",
           missionStatement: res.data.missionStatement,
           welcomeMessage: res.data.welcomeMessage,
+          missionTagline: res.data.missionTagline,
+          missionDescription: res.data.missionDescription,
         });
       })
       .catch(() => toast.error("Failed to load parish info"))
@@ -112,7 +118,7 @@ export default function ParishInfo() {
     >
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-3xl">
 
-        {/* Contact Details */}
+        {/* Church Details & Mission */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -129,12 +135,27 @@ export default function ParishInfo() {
               )}
             </div>
             <div className="space-y-1.5">
-              <Label>Mission Statement</Label>
+              <Label>Mission Statement (brief statement)</Label>
               <Textarea rows={2} {...form.register("missionStatement")} />
             </div>
             <div className="space-y-1.5">
-              <Label>Welcome Message (shown on homepage)</Label>
-              <Textarea rows={4} {...form.register("welcomeMessage")} />
+              <Label>Welcome Message (shown on homepage hero)</Label>
+              <Textarea rows={2} {...form.register("welcomeMessage")} />
+            </div>
+            <div className="border-t pt-4">
+              <h3 className="text-sm font-medium text-gray-700 mb-4">Mission Section (Footer) ✨</h3>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Mission Tagline</Label>
+                  <p className="text-xs text-muted-foreground mb-2">Main tagline shown in italics</p>
+                  <Textarea rows={1} placeholder="To do the work of Jesus Christ our Saviour." {...form.register("missionTagline")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Mission Description</Label>
+                  <p className="text-xs text-muted-foreground mb-2">Longer description paragraph</p>
+                  <Textarea rows={4} placeholder="In all that we do, we strive to embody the love..." {...form.register("missionDescription")} />
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
