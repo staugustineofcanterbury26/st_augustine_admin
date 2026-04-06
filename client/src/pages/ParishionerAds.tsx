@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -26,31 +27,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Pencil, Upload } from "lucide-react";
-import axios from "axios";
-
-const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:5000";
-const apiClient = axios.create({ baseURL: BASE_URL });
-
-interface ParishionerAd {
-  id: number;
-  title: string;
-  description: string;
-  parishionerName: string;
-  imageUrl: string;
-  linkUrl: string | null;
-  isActive: boolean;
-  displayOrder: number;
-  expiresAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
+import { Plus, Trash2, Pencil, Upload, ImagePlus, X, Images } from "lucide-react";
+import { ImageGallerySelector } from "@/components/uploads/ImageGallerySelector";
+import { adsApi, type ParishionerAd, type GalleryImage } from "@/lib/api";
 
 const adSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
-  description: z.string().min(1, "Description is required").max(500),
-  parishionerName: z.string().min(1, "Parishioner name is required").max(100),
-  imageUrl: z.string().min(1, "Image URL is required"),
+  description: z.string().max(500).optional(),
+  parishionerName: z.string().max(100).optional(),
   linkUrl: z.string().optional(),
   isActive: z.boolean(),
   expiresAt: z.string().optional(),
@@ -66,13 +50,18 @@ export default function ParishionerAds() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
+  // Image upload state
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
   const form = useForm<AdFormData>({
     resolver: zodResolver(adSchema),
     defaultValues: {
       title: "",
       description: "",
       parishionerName: "",
-      imageUrl: "",
       linkUrl: "",
       isActive: true,
       expiresAt: "",
@@ -86,10 +75,8 @@ export default function ParishionerAds() {
   const loadAds = async () => {
     try {
       setIsLoading(true);
-      const response = await apiClient.get("/ads");
-      // Load all ads (active and inactive) for admin view
-      const allAds = await apiClient.get("/ads", { headers: { "X-Include-Inactive": "true" } }).catch(() => response);
-      setAds((allAds.data || response.data || []).sort((a: ParishionerAd, b: ParishionerAd) => a.displayOrder - b.displayOrder));
+      const response = await adsApi.getAll();
+      setAds((response.data || []).sort((a, b) => a.displayOrder - b.displayOrder));
     } catch (error) {
       console.error("Failed to load ads:", error);
       toast.error("Failed to load ads");
@@ -103,24 +90,30 @@ export default function ParishionerAds() {
     try {
       const submitData = {
         ...data,
+        imageUrl: imageUrl || "",
+        description: data.description || "",
+        parishionerName: data.parishionerName || "",
         linkUrl: (data.linkUrl && data.linkUrl !== "") ? data.linkUrl : null,
         expiresAt: (data.expiresAt && data.expiresAt !== "") ? data.expiresAt : null,
       };
-      
+
       if (editingAd) {
-        // Update existing ad
-        const response = await apiClient.put(`/ads/${editingAd.id}`, submitData);
-        setAds((prev) => prev.map((a) => (a.id === editingAd.id ? response.data : a)));
+        await adsApi.update(editingAd.id, submitData);
         toast.success("Ad updated successfully");
       } else {
-        // Create new ad
-        const response = await apiClient.post("/ads", submitData);
-        setAds((prev) => [...prev, response.data].sort((a: ParishionerAd, b: ParishionerAd) => a.displayOrder - b.displayOrder));
+        if (!imageUrl) {
+          toast.error("Please upload an image before creating the ad");
+          setSaving(false);
+          return;
+        }
+        await adsApi.create(submitData);
         toast.success("Ad created successfully");
       }
       setDialogOpen(false);
       form.reset();
       setEditingAd(null);
+      setImageUrl(null);
+      loadAds();
     } catch (error) {
       console.error("Failed to save ad:", error);
       toast.error("Failed to save ad");
@@ -131,11 +124,11 @@ export default function ParishionerAds() {
 
   const openEditDialog = (ad: ParishionerAd) => {
     setEditingAd(ad);
+    setImageUrl(ad.imageUrl || null);
     form.reset({
       title: ad.title,
       description: ad.description,
       parishionerName: ad.parishionerName,
-      imageUrl: ad.imageUrl,
       linkUrl: ad.linkUrl || "",
       isActive: ad.isActive,
       expiresAt: ad.expiresAt?.split("T")[0] || "",
@@ -143,11 +136,66 @@ export default function ParishionerAds() {
     setDialogOpen(true);
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+    if (!editingAd) {
+      toast.error("Save the ad first, then upload an image");
+      return;
+    }
+    setUploadingImage(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await adsApi.uploadImage(editingAd.id, formData);
+      setImageUrl(res.data.imageUrl);
+      toast.success("Image uploaded");
+      loadAds();
+    } catch {
+      toast.error("Failed to upload image");
+    } finally {
+      setUploadingImage(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    if (!editingAd) return;
+    try {
+      await adsApi.update(editingAd.id, { imageUrl: "" } as never);
+      setImageUrl(null);
+      toast.success("Image removed");
+      loadAds();
+    } catch {
+      toast.error("Failed to remove image");
+    }
+  };
+
+  const handleGalleryImageSelect = async (galleryImage: GalleryImage) => {
+    if (!editingAd) return;
+    setUploadingImage(true);
+    try {
+      await adsApi.update(editingAd.id, { imageUrl: galleryImage.url } as never);
+      setImageUrl(galleryImage.url);
+      setGalleryOpen(false);
+      toast.success("Image selected from gallery");
+      loadAds();
+    } catch {
+      toast.error("Failed to set image from gallery");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this ad permanently?")) return;
     setDeletingId(id);
     try {
-      await apiClient.delete(`/ads/${id}`);
+      await adsApi.delete(id);
       setAds((prev) => prev.filter((a) => a.id !== id));
       toast.success("Ad deleted");
     } catch (error) {
@@ -160,6 +208,7 @@ export default function ParishionerAds() {
 
   const openNewDialog = () => {
     setEditingAd(null);
+    setImageUrl(null);
     form.reset();
     setDialogOpen(true);
   };
@@ -190,6 +239,7 @@ export default function ParishionerAds() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Image</TableHead>
                 <TableHead>Title</TableHead>
                 <TableHead>Parishioner Name</TableHead>
                 <TableHead>Status</TableHead>
@@ -201,6 +251,19 @@ export default function ParishionerAds() {
             <TableBody>
               {ads.map((ad) => (
                 <TableRow key={ad.id}>
+                  <TableCell>
+                    {ad.imageUrl ? (
+                      <img
+                        src={ad.imageUrl}
+                        alt={ad.title}
+                        className="h-10 w-10 rounded object-cover"
+                      />
+                    ) : (
+                      <div className="h-10 w-10 rounded bg-gray-100 flex items-center justify-center">
+                        <ImagePlus className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <span className="font-medium text-sm">{ad.title}</span>
                   </TableCell>
@@ -298,17 +361,85 @@ export default function ParishionerAds() {
               )}
             </div>
 
+            {/* Image Upload Section */}
             <div className="space-y-1.5">
-              <Label>Image URL</Label>
-              <Input
-                placeholder="https://example.com/image.jpg"
-                {...form.register("imageUrl")}
+              <Label>Ad Image {!editingAd && "(save ad first to upload)"}</Label>
+              <div className="border rounded-lg p-3 space-y-3">
+                {imageUrl ? (
+                  <div className="relative w-full h-40 rounded overflow-hidden bg-gray-100">
+                    <img src={imageUrl} alt="Ad" className="w-full h-full object-cover" />
+                    {editingAd && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors"
+                        title="Remove image"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-32 rounded bg-gray-50 border-dashed border border-gray-200">
+                    <div className="text-center text-muted-foreground">
+                      <ImagePlus className="h-8 w-8 mx-auto mb-1 opacity-40" />
+                      <p className="text-xs">{editingAd ? "No image uploaded" : "Save ad first to upload"}</p>
+                    </div>
+                  </div>
+                )}
+                {editingAd && (
+                  <Tabs defaultValue="upload" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 h-auto mb-3">
+                      <TabsTrigger value="upload" className="flex items-center gap-1.5 text-xs">
+                        <ImagePlus className="h-3.5 w-3.5" />
+                        Upload
+                      </TabsTrigger>
+                      <TabsTrigger value="gallery" className="flex items-center gap-1.5 text-xs">
+                        <Images className="h-3.5 w-3.5" />
+                        Gallery
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="upload" className="space-y-2 mt-3">
+                      <input
+                        ref={imageInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        disabled={uploadingImage}
+                        onClick={() => imageInputRef.current?.click()}
+                      >
+                        <ImagePlus className="h-4 w-4 mr-1.5" />
+                        {uploadingImage ? "Uploading…" : imageUrl ? "Replace Image" : "Upload Image"}
+                      </Button>
+                    </TabsContent>
+                    <TabsContent value="gallery" className="space-y-2 mt-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        disabled={uploadingImage}
+                        onClick={() => setGalleryOpen(true)}
+                      >
+                        <Images className="h-4 w-4 mr-1.5" />
+                        Browse Gallery
+                      </Button>
+                    </TabsContent>
+                  </Tabs>
+                )}
+              </div>
+              <ImageGallerySelector
+                open={galleryOpen}
+                onClose={() => setGalleryOpen(false)}
+                onSelect={handleGalleryImageSelect}
               />
-              {form.formState.errors.imageUrl && (
-                <p className="text-xs text-destructive">
-                  {form.formState.errors.imageUrl.message}
-                </p>
-              )}
             </div>
 
             <div className="space-y-1.5">

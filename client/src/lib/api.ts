@@ -500,6 +500,39 @@ export interface HomepageData {
   sections: HomepageFeaturedSection[];
 }
 
+// ── Parishioner Ads ────────────────────────────────────────────────────────────
+
+export interface ParishionerAd {
+  id: number;
+  title: string;
+  description: string;
+  parishionerName: string;
+  imageUrl: string;
+  linkUrl: string | null;
+  isActive: boolean;
+  displayOrder: number;
+  expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ParishionerAdInput = Omit<ParishionerAd, "id" | "createdAt" | "updatedAt" | "displayOrder">;
+
+export const adsApi = {
+  getAll: () => api.get<ParishionerAd[]>("/api/ads"),
+  create: (data: Partial<ParishionerAdInput>) =>
+    api.post<ParishionerAd>("/api/ads", data),
+  update: (id: number, data: Partial<ParishionerAdInput>) =>
+    api.put<ParishionerAd>(`/api/ads/${id}`, data),
+  delete: (id: number) => api.delete(`/api/ads/${id}`),
+  uploadImage: (id: number, formData: FormData) =>
+    api.post<ParishionerAd>(`/api/ads/${id}/image`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+  updateOrder: (id: number, newDisplayOrder: number) =>
+    api.put<ParishionerAd>(`/api/ads/${id}/order`, { newDisplayOrder }),
+};
+
 export const homepageApi = {
   get: () => api.get<HomepageData>("/api/homepage"),
   getAdmin: () => api.get<HomepageData>("/api/homepage/admin"),
