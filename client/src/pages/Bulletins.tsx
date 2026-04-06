@@ -83,6 +83,17 @@ export default function Bulletins() {
 
   const saveEdit = async () => {
     if (!editingBulletin) return;
+    // Validate date format (YYYY-MM-DD)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(editDate)) {
+      toast.error("Please use YYYY-MM-DD date format");
+      return;
+    }
+    // Validate date is not in the future
+    if (new Date(editDate) > new Date()) {
+      toast.error("Date cannot be in the future");
+      return;
+    }
     setSaving(true);
     try {
       const res = await bulletinsApi.update(editingBulletin.id, {
@@ -239,8 +250,16 @@ export default function Bulletins() {
               <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label>Date</Label>
-              <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
+              <Label>Date (YYYY-MM-DD)</Label>
+              <Input
+                type="date"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+                max={new Date().toISOString().split("T")[0]}
+              />
+              <p className="text-xs text-muted-foreground">
+                Bulletins are sorted by date (newest first). Make sure the date matches when it was distributed.
+              </p>
             </div>
           </div>
           <DialogFooter>

@@ -9,6 +9,7 @@ import MassTimes from "@/pages/MassTimes";
 import Events from "@/pages/Events";
 import Gallery from "@/pages/Gallery";
 import Bulletins from "@/pages/Bulletins";
+import ParishionerAds from "@/pages/ParishionerAds";
 import ParishInfo from "@/pages/ParishInfo";
 import Priest from "@/pages/Priest";
 import Sacraments from "@/pages/Sacraments";
@@ -42,6 +43,9 @@ function AdminRouter() {
       </Route>
       <Route path="/bulletins">
         <ProtectedRoute><Bulletins /></ProtectedRoute>
+      </Route>
+      <Route path="/parishioner-ads">
+        <ProtectedRoute><ParishionerAds /></ProtectedRoute>
       </Route>
       <Route path="/parish-info">
         <ProtectedRoute><ParishInfo /></ProtectedRoute>

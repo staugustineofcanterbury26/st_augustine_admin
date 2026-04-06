@@ -59,6 +59,7 @@ const navGroups = [
     items: [
       { href: "/ministries", label: "Get Involved", icon: HandHeart },
       { href: "/rentals", label: "Rentals", icon: Building2 },
+      { href: "/parishioner-ads", label: "Parishioner Ads", icon: Images },
       { href: "/pastoral-unit", label: "Pastoral Unit", icon: Church },
       { href: "/contact-messages", label: "Contact Messages", icon: Mail },
     ],
