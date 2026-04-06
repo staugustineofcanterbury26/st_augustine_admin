@@ -33,7 +33,23 @@ export function ImageGallerySelector({ open, onClose, onSelect }: ImageGallerySe
     galleryApi
       .getAll({ includeHidden: true })
       .then((res) => {
-        setImages(res.data);
+        // Validate URL fields on ingestion — only https? URLs are kept,
+        // preventing non-http(s) schemes reaching any DOM sink (CWE-79).
+        const safeUrl = (u?: string | null): string =>
+          u && /^https?:\/\//i.test(u) ? u : "";
+        setImages(
+          (res.data as GalleryImage[]).map((img): GalleryImage => ({
+            id: img.id,
+            title: img.title,
+            description: img.description,
+            url: safeUrl(img.url),
+            thumbnailUrl: safeUrl(img.thumbnailUrl) || undefined,
+            album: img.album,
+            sortOrder: img.sortOrder,
+            isPublished: img.isPublished,
+            createdAt: img.createdAt,
+          }))
+        );
       })
       .catch(() => toast.error("Failed to load gallery"))
       .finally(() => setIsLoading(false));
@@ -104,7 +120,7 @@ export function ImageGallerySelector({ open, onClose, onSelect }: ImageGallerySe
                   }`}
                 >
                   <img
-                    src={image.thumbnailUrl || image.url}
+                    src={image.thumbnailUrl || image.url || undefined}
                     alt={image.title}
                     className="w-full aspect-square object-cover"
                   />
