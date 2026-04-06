@@ -101,17 +101,11 @@ export default function ParishionerAds() {
         await adsApi.update(editingAd.id, submitData);
         toast.success("Ad updated successfully");
       } else {
-        if (!imageUrl) {
-          toast.error("Please upload an image before creating the ad");
-          setSaving(false);
-          return;
-        }
-        await adsApi.create(submitData);
-        toast.success("Ad created successfully");
+        const res = await adsApi.create(submitData);
+        setEditingAd(res.data);
+        toast.success("Ad created! Now you can upload an image.");
       }
-      setDialogOpen(false);
       form.reset();
-      setEditingAd(null);
       setImageUrl(null);
       loadAds();
     } catch (error) {
@@ -363,7 +357,7 @@ export default function ParishionerAds() {
 
             {/* Image Upload Section */}
             <div className="space-y-1.5">
-              <Label>Ad Image {!editingAd && "(save ad first to upload)"}</Label>
+              <Label>Ad Image <span className="text-xs text-muted-foreground font-normal">(optional)</span></Label>
               <div className="border rounded-lg p-3 space-y-3">
                 {imageUrl ? (
                   <div className="relative w-full h-40 rounded overflow-hidden bg-gray-100">
@@ -383,7 +377,7 @@ export default function ParishionerAds() {
                   <div className="flex items-center justify-center h-32 rounded bg-gray-50 border-dashed border border-gray-200">
                     <div className="text-center text-muted-foreground">
                       <ImagePlus className="h-8 w-8 mx-auto mb-1 opacity-40" />
-                      <p className="text-xs">{editingAd ? "No image uploaded" : "Save ad first to upload"}</p>
+                      <p className="text-xs">{editingAd ? "Upload or select from gallery" : "Create ad to upload image"}</p>
                     </div>
                   </div>
                 )}
