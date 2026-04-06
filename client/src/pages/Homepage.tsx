@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { upload } from "@vercel/blob/client";
 import { homepageApi, type HomepageData } from "@/lib/api";
 import { ImageUpload } from "@/components/uploads/ImageUpload";
 import { VideoUpload } from "@/components/uploads/VideoUpload";
@@ -143,9 +144,17 @@ export default function Homepage() {
   };
 
   const handleHeroVideoUpload = async (file: File): Promise<{ heroVideoUrl: string }> => {
-    const formData = new FormData();
-    formData.append("file", file);
-    const res = await homepageApi.uploadVideo(formData);
+    const token = localStorage.getItem("admin_token");
+    const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
+
+    // Upload directly to Vercel Blob (bypasses serverless 4.5 MB body limit)
+    const blob = await upload(`homepage/${file.name}`, file, {
+      access: "public",
+      handleUploadUrl: `${apiUrl}/api/homepage/hero/video/upload`,
+      clientPayload: token ?? "",
+    });
+
+    const res = await homepageApi.updateHero({ heroVideoUrl: blob.url });
     setData((prev) => (prev ? { ...prev, hero: res.data } : null));
     return { heroVideoUrl: res.data.heroVideoUrl ?? "" };
   };
@@ -244,7 +253,7 @@ export default function Homepage() {
                 onUpload={handleHeroVideoUpload}
                 onGallerySelect={handleHeroVideoGallerySelect}
                 onDelete={handleHeroVideoDelete}
-                maxSizeMb={5}
+                maxSizeMb={10}
                 helpText="Optional. Plays on the hero banner with fallback image."
               />
             </div>
