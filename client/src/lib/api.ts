@@ -519,7 +519,7 @@ export interface ParishionerAd {
 export type ParishionerAdInput = Omit<ParishionerAd, "id" | "createdAt" | "updatedAt" | "displayOrder">;
 
 export const adsApi = {
-  getAll: () => api.get<ParishionerAd[]>("/api/ads"),
+  getAll: () => api.get<ParishionerAd[]>("/api/ads/admin"),
   create: (data: Partial<ParishionerAdInput>) =>
     api.post<ParishionerAd>("/api/ads", data),
   update: (id: number, data: Partial<ParishionerAdInput>) =>

@@ -185,8 +185,24 @@ export default function ParishionerAds() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Delete this ad permanently?")) return;
+  const [togglingId, setTogglingId] = useState<number | null>(null);
+
+  const handleToggleActive = async (ad: ParishionerAd) => {
+    setTogglingId(ad.id);
+    try {
+      await adsApi.update(ad.id, { isActive: !ad.isActive } as never);
+      setAds((prev) =>
+        prev.map((a) => (a.id === ad.id ? { ...a, isActive: !a.isActive } : a))
+      );
+      toast.success(ad.isActive ? "Ad deactivated" : "Ad activated");
+    } catch {
+      toast.error("Failed to update status");
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const handleDelete = async (id: number) => {    if (!confirm("Delete this ad permanently?")) return;
     setDeletingId(id);
     try {
       await adsApi.delete(id);
@@ -265,12 +281,17 @@ export default function ParishionerAds() {
                     {ad.parishionerName}
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      variant={ad.isActive ? "default" : "secondary"}
-                      className={ad.isActive ? "bg-green-100 text-green-800" : ""}
-                    >
-                      {ad.isActive ? "Active" : "Inactive"}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={ad.isActive}
+                        disabled={togglingId === ad.id}
+                        onCheckedChange={() => handleToggleActive(ad)}
+                        aria-label={ad.isActive ? "Deactivate ad" : "Activate ad"}
+                      />
+                      <span className={`text-xs font-medium ${ad.isActive ? "text-green-700" : "text-gray-400"}`}>
+                        {ad.isActive ? "Active" : "Inactive"}
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {ad.expiresAt ? new Date(ad.expiresAt).toLocaleDateString() : "Never"}
