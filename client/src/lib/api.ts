@@ -480,6 +480,8 @@ export interface HomepageContent {
   heroTitle: string;
   heroSubtitle: string;
   heroDescription: string;
+  communityImageUrl: string;
+  candlesImageUrl: string;
   updatedAt: string;
 }
 

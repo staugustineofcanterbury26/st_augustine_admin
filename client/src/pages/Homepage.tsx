@@ -177,6 +177,74 @@ export default function Homepage() {
     );
   };
 
+  const handleCommunityImageUpload = async (file: File) => {
+    const token = localStorage.getItem("admin_token");
+    const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
+
+    // Upload directly to Vercel Blob
+    const blob = await upload(`homepage/community/${file.name}`, file, {
+      access: "public",
+      handleUploadUrl: `${apiUrl}/api/homepage/image/upload`,
+      clientPayload: token ?? "",
+    });
+
+    const res = await homepageApi.updateHero({ communityImageUrl: blob.url });
+    setData((prev) => (prev ? { ...prev, hero: res.data } : null));
+    return { imageUrl: res.data.communityImageUrl };
+  };
+
+  const handleCommunityImageGallerySelect = async (url: string) => {
+    const res = await homepageApi.updateHero({ communityImageUrl: url });
+    setData((prev) => (prev ? { ...prev, hero: res.data } : null));
+    return { imageUrl: res.data.communityImageUrl };
+  };
+
+  const handleCommunityImageDelete = async () => {
+    await homepageApi.updateHero({ communityImageUrl: "" });
+    setData((prev) =>
+      prev
+        ? {
+            ...prev,
+            hero: { ...prev.hero, communityImageUrl: "" },
+          }
+        : null
+    );
+  };
+
+  const handleCandlesImageUpload = async (file: File) => {
+    const token = localStorage.getItem("admin_token");
+    const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
+
+    // Upload directly to Vercel Blob
+    const blob = await upload(`homepage/candles/${file.name}`, file, {
+      access: "public",
+      handleUploadUrl: `${apiUrl}/api/homepage/image/upload`,
+      clientPayload: token ?? "",
+    });
+
+    const res = await homepageApi.updateHero({ candlesImageUrl: blob.url });
+    setData((prev) => (prev ? { ...prev, hero: res.data } : null));
+    return { imageUrl: res.data.candlesImageUrl };
+  };
+
+  const handleCandlesImageGallerySelect = async (url: string) => {
+    const res = await homepageApi.updateHero({ candlesImageUrl: url });
+    setData((prev) => (prev ? { ...prev, hero: res.data } : null));
+    return { imageUrl: res.data.candlesImageUrl };
+  };
+
+  const handleCandlesImageDelete = async () => {
+    await homepageApi.updateHero({ candlesImageUrl: "" });
+    setData((prev) =>
+      prev
+        ? {
+            ...prev,
+            hero: { ...prev.hero, candlesImageUrl: "" },
+          }
+        : null
+    );
+  };
+
   if (isLoading) {
     return (
       <AdminLayout title="Homepage">
@@ -256,6 +324,33 @@ export default function Homepage() {
                 maxSizeMb={10}
                 helpText="Optional. Plays on the hero banner with fallback image."
               />
+            </div>
+
+            {/* Community & Candles Images */}
+            <div className="space-y-3 pt-4 border-t">
+              <div className="grid grid-cols-2 gap-4">
+                <ImageUpload
+                  label="Community Gathering Image"
+                  currentUrl={data?.hero.communityImageUrl}
+                  onUpload={handleCommunityImageUpload}
+                  onGallerySelect={handleCommunityImageGallerySelect}
+                  onDelete={handleCommunityImageDelete}
+                  maxSizeMb={1}
+                  helpText="Shown in the 'Family of Faith' section."
+                  showPreview
+                />
+
+                <ImageUpload
+                  label="Prayer Candles Image"
+                  currentUrl={data?.hero.candlesImageUrl}
+                  onUpload={handleCandlesImageUpload}
+                  onGallerySelect={handleCandlesImageGallerySelect}
+                  onDelete={handleCandlesImageDelete}
+                  maxSizeMb={1}
+                  helpText="Shown in the 'Place for Prayer' section."
+                  showPreview
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
