@@ -361,7 +361,7 @@ export interface Page {
   isPublished: boolean;
   showInNav: boolean;
   navLabel: string | null;
-  navPosition: "top" | "church" | "ministries" | "sacraments" | "sacraments-faith-education";
+  navPosition: string; // nav item slug (e.g. 'church', 'sacraments') or 'none' for standalone
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -553,5 +553,41 @@ export const homepageApi = {
   updateSections: (sections: Omit<HomepageFeaturedSection, "updatedAt">[]) =>
     api.put<HomepageFeaturedSection[]>("/api/homepage/sections", sections),
   getSections: () => api.get<HomepageFeaturedSection[]>("/api/homepage/sections"),
+};
+
+// ── Navigation Items ──────────────────────────────────────────────────────────
+
+export interface NavigationItem {
+  id: number;
+  label: string;
+  slug: string;
+  href: string | null;
+  pageId: number | null;
+  icon: string | null;
+  parentId: number | null;
+  level: number; // 1 = main, 2 = sub-category, 3 = child link
+  sortOrder: number;
+  isActive: boolean;
+  isSystem: boolean; // System items cannot be deleted
+  megaImage: string | null;   // Feature image URL for L1 mega-menu panel
+  megaCaption: string | null; // Caption below feature image
+  megaCtaHref: string | null; // "Read more" link target
+  createdAt: string;
+  updatedAt: string;
+  children?: NavigationItem[];
+}
+
+export type NavigationItemInput = Omit<NavigationItem, "id" | "createdAt" | "updatedAt" | "children">;
+
+export const navigationApi = {
+  getAll: () => api.get<NavigationItem[]>("/api/navigation?all=true"),
+  getById: (id: number) => api.get<NavigationItem>(`/api/navigation/${id}`),
+  create: (data: NavigationItemInput) =>
+    api.post<NavigationItem>("/api/navigation", data),
+  update: (id: number, data: Partial<NavigationItemInput>) =>
+    api.put<NavigationItem>(`/api/navigation/${id}`, data),
+  delete: (id: number) => api.delete(`/api/navigation/${id}`),
+  reorder: (parentId: number, items: { id: number; sortOrder: number }[]) =>
+    api.put<NavigationItem[]>(`/api/navigation/${parentId}/reorder`, { items }),
 };
 

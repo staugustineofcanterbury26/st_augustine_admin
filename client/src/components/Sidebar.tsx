@@ -25,6 +25,7 @@ import {
   LayoutTemplate,
   Users,
   HardDrive,
+  Menu as MenuIcon,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -39,6 +40,7 @@ const navGroups = [
     label: "Content",
     items: [
       { href: "/homepage", label: "Homepage", icon: LayoutTemplate },
+      { href: "/navigation", label: "Navigation", icon: MenuIcon },
       { href: "/mass-times", label: "Mass Times", icon: Clock },
       { href: "/events", label: "Events", icon: CalendarDays },
       { href: "/sacraments", label: "Sacraments", icon: BookOpen },

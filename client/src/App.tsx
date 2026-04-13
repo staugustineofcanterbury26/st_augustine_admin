@@ -22,6 +22,7 @@ import PastoralUnit from "@/pages/PastoralUnit";
 import Storage from "@/pages/Storage";
 import ContactMessages from "@/pages/ContactMessages";
 import Homepage from "@/pages/Homepage";
+import Navigation from "@/pages/Navigation";
 
 function AdminRouter() {
   return (
@@ -40,6 +41,9 @@ function AdminRouter() {
       </Route>
       <Route path="/homepage">
         <ProtectedRoute><Homepage /></ProtectedRoute>
+      </Route>
+      <Route path="/navigation">
+        <ProtectedRoute><Navigation /></ProtectedRoute>
       </Route>
       <Route path="/bulletins">
         <ProtectedRoute><Bulletins /></ProtectedRoute>

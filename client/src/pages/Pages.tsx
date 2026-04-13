@@ -32,7 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { pagesApi, type Page, galleryApi, type GalleryImage } from "@/lib/api";
+import { pagesApi, type Page, galleryApi, type GalleryImage, navigationApi, type NavigationItem } from "@/lib/api";
 import { Plus, Pencil, Trash2, Globe, EyeOff, ExternalLink, ImagePlus, X, Images } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { ImageGallerySelector } from "@/components/uploads/ImageGallerySelector";
@@ -60,7 +60,7 @@ const pageSchema = z.object({
   isPublished: z.boolean(),
   showInNav: z.boolean(),
   navLabel: z.string().nullish().transform(val => val || null),
-  navPosition: z.enum(["top", "church", "ministries", "sacraments", "sacraments-faith-education"]),
+  navPosition: z.string().default("none"),
   sortOrder: z.coerce.number().int().min(0),
 });
 
@@ -82,15 +82,37 @@ function formDefault(page?: Page): PageForm {
     isPublished: page?.isPublished ?? false,
     showInNav: page?.showInNav ?? false,
     navLabel: page?.navLabel ?? "",
-    navPosition: page?.navPosition ?? "top",
+    navPosition: page?.navPosition ?? "none",
     sortOrder: page?.sortOrder ?? 0,
   };
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+/**
+ * Flatten the nav items tree into { value, label } options for the navPosition
+ * dropdown. Only L1 and L2 items are shown — pages slot into a section, not
+ * under a leaf link.
+ */
+function flattenNavOptions(
+  items: NavigationItem[],
+  depth = 0
+): { value: string; label: string }[] {
+  if (depth > 1) return []; // stop after L2
+  const result: { value: string; label: string }[] = [];
+  for (const item of items) {
+    const indent = depth === 1 ? "    ↳ " : "";
+    result.push({ value: item.slug, label: `${indent}${item.label}` });
+    if (item.children && item.children.length > 0) {
+      result.push(...flattenNavOptions(item.children, depth + 1));
+    }
+  }
+  return result;
+}
+
 export default function Pages() {
   const [pages, setPages] = useState<Page[]>([]);
+  const [navItems, setNavItems] = useState<NavigationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Page | null>(null);
@@ -116,9 +138,14 @@ export default function Pages() {
 
   const load = () => {
     setIsLoading(true);
-    pagesApi
-      .getAll()
-      .then((res) => setPages(res.data))
+    Promise.all([
+      pagesApi.getAll(),
+      navigationApi.getAll(),
+    ])
+      .then(([pagesRes, navRes]) => {
+        setPages(pagesRes.data);
+        setNavItems(navRes.data);
+      })
       .catch(() => toast.error("Failed to load pages"))
       .finally(() => setIsLoading(false));
   };
@@ -461,9 +488,11 @@ export default function Pages() {
                     {page.showInNav ? (
                       <span className="text-xs text-green-700 font-medium">
                         {page.navLabel || page.title}
-                        <span className="ml-1 text-muted-foreground font-normal">
-                          ({page.navPosition === "top" ? "Top bar" : page.navPosition === "church" ? "Church menu" : page.navPosition === "ministries" ? "Ministries menu" : page.navPosition === "sacraments" ? "Sacraments menu" : "Sacraments → Faith Education"})
-                        </span>
+                        {page.navPosition && page.navPosition !== "none" && (
+                          <span className="ml-1 text-muted-foreground font-normal">
+                            ({flattenNavOptions(navItems).find((o) => o.value === page.navPosition)?.label ?? page.navPosition})
+                          </span>
+                        )}
                       </span>
                     ) : (
                       <span className="text-xs text-muted-foreground">–</span>
@@ -753,12 +782,14 @@ export default function Pages() {
                   {...form.register("navPosition")}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
-                  <option value="top">Top bar (standalone link)</option>
-                  <option value="church">Home → Church dropdown</option>
-                  <option value="ministries">Home → Ministries dropdown</option>
-                  <option value="sacraments">Sacraments → Sacraments group</option>
-                  <option value="sacraments-faith-education">Sacraments → Faith Education group</option>
+                  <option value="none">None (standalone / no dropdown)</option>
+                  {flattenNavOptions(navItems).map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
                 </select>
+                <p className="text-xs text-muted-foreground">Select which navigation item this page appears under.</p>
               </div>
             </div>
 
