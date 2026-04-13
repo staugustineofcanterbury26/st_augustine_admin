@@ -380,6 +380,9 @@ export default function NavigationFormDialog({
                   }}
                 />
 
+                {/* Hidden registered input so RHF includes megaImage in form submission */}
+                <input type="hidden" {...form.register("megaImage")} />
+
                 {/* Current image preview */}
                 {form.watch("megaImage") && (
                   <div className="relative inline-block mt-1 mb-2">
