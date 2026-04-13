@@ -589,5 +589,9 @@ export const navigationApi = {
   delete: (id: number) => api.delete(`/api/navigation/${id}`),
   reorder: (parentId: number, items: { id: number; sortOrder: number }[]) =>
     api.put<NavigationItem[]>(`/api/navigation/${parentId}/reorder`, { items }),
+  uploadImage: (id: number, formData: FormData) =>
+    api.post<NavigationItem>(`/api/navigation/${id}/image`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
 };
 

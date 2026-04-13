@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { ImagePlus, Images, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -21,7 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { navigationApi, type NavigationItem, pagesApi, type Page } from "@/lib/api";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { navigationApi, type NavigationItem, pagesApi, type Page, galleryApi, type GalleryImage } from "@/lib/api";
+import { ImageGallerySelector } from "@/components/uploads/ImageGallerySelector";
 
 // ── Validation Schema ──────────────────────────────────────────────────────────
 
@@ -71,6 +74,9 @@ export default function NavigationFormDialog({
 }: NavigationFormProps) {
   const [saving, setSaving] = useState(false);
   const [selectedLinkType, setSelectedLinkType] = useState<"page" | "url">("page");
+  const [megaGalleryOpen, setMegaGalleryOpen] = useState(false);
+  const [megaUploading, setMegaUploading] = useState(false);
+  const megaImageInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<NavigationForm>({
     resolver: zodResolver(navigationSchema),
@@ -165,6 +171,30 @@ export default function NavigationFormDialog({
     }
   }, [parentIdValue, allFlatItems, form]);
 
+  const handleMegaImageUpload = async (file: File) => {
+    if (!item?.id) {
+      toast.error("Save the navigation item first before uploading an image.");
+      return;
+    }
+    setMegaUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const { data } = await navigationApi.uploadImage(item.id, formData);
+      form.setValue("megaImage", data.megaImage ?? "");
+      toast.success("Image uploaded");
+    } catch {
+      toast.error("Image upload failed");
+    } finally {
+      setMegaUploading(false);
+    }
+  };
+
+  const handleMegaGallerySelect = (image: GalleryImage) => {
+    form.setValue("megaImage", image.url);
+    setMegaGalleryOpen(false);
+  };
+
   const handleSubmit = async (values: NavigationForm) => {
     setSaving(true);
     try {
@@ -200,6 +230,7 @@ export default function NavigationFormDialog({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
@@ -334,12 +365,77 @@ export default function NavigationFormDialog({
             <div className="space-y-3 p-3 bg-blue-50 border border-blue-200 rounded">
               <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Mega-menu Feature Panel</p>
               <div>
-                <Label>Feature Image URL</Label>
-                <Input
-                  type="text"
-                  placeholder="https://… or /church-exterior.jpg"
-                  {...form.register("megaImage")}
+                <Label>Feature Image</Label>
+
+                {/* Hidden file input */}
+                <input
+                  ref={megaImageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleMegaImageUpload(file);
+                    e.target.value = "";
+                  }}
                 />
+
+                {/* Current image preview */}
+                {form.watch("megaImage") && (
+                  <div className="relative inline-block mt-1 mb-2">
+                    <img
+                      src={form.watch("megaImage")}
+                      alt="Feature preview"
+                      className="h-24 rounded border object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => form.setValue("megaImage", "")}
+                      className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"
+                      title="Remove image"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+
+                <Tabs defaultValue="upload" className="mt-1">
+                  <TabsList className="h-8">
+                    <TabsTrigger value="upload" className="text-xs px-3 h-7">
+                      <ImagePlus className="h-3 w-3 mr-1" />
+                      Upload
+                    </TabsTrigger>
+                    <TabsTrigger value="gallery" className="text-xs px-3 h-7">
+                      <Images className="h-3 w-3 mr-1" />
+                      From Gallery
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="upload" className="mt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={megaUploading || !item?.id}
+                      onClick={() => megaImageInputRef.current?.click()}
+                    >
+                      {megaUploading ? "Uploading…" : "Choose Image File"}
+                    </Button>
+                    {!item?.id && (
+                      <p className="text-xs text-amber-600 mt-1">Save this item first to enable file upload.</p>
+                    )}
+                  </TabsContent>
+                  <TabsContent value="gallery" className="mt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setMegaGalleryOpen(true)}
+                    >
+                      Browse Gallery
+                    </Button>
+                  </TabsContent>
+                </Tabs>
+
                 <p className="text-xs text-gray-500 mt-1">Displayed on the left side of the dropdown panel.</p>
               </div>
               <div>
@@ -446,5 +542,12 @@ export default function NavigationFormDialog({
         </form>
       </DialogContent>
     </Dialog>
+
+    <ImageGallerySelector
+      open={megaGalleryOpen}
+      onClose={() => setMegaGalleryOpen(false)}
+      onSelect={handleMegaGallerySelect}
+    />
+    </>
   );
 }
