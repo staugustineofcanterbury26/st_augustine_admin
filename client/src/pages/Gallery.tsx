@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { galleryApi, type GalleryImage } from "@/lib/api";
-import { Upload, Trash2, Pencil, Images, X } from "lucide-react";
+import { Upload, Trash2, Pencil, Images, X, Download } from "lucide-react";
 
 export default function Gallery() {
   const [images, setImages] = useState<GalleryImage[]>([]);
@@ -115,6 +115,21 @@ export default function Gallery() {
   };
 
   const clearSelection = () => setSelectedIds([]);
+
+  const handleDownload = async (url: string, name: string) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const localUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = localUrl;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(localUrl);
+    } catch {
+      toast.error("Failed to download file");
+    }
+  };
 
   const bulkSetPublished = async (publish: boolean) => {
     if (selectedIds.length === 0) return;
@@ -268,9 +283,22 @@ export default function Gallery() {
                 className="object-cover w-full h-full transition-transform group-hover:scale-105"
                 loading="lazy"
               />
-              {/* Overlay */}
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2">
+              {/* Hover overlay — action buttons at bottom so they don't clash with the toggle */}
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2 z-10">
+                <div>
+                  <p className="text-white text-xs font-medium truncate max-w-[calc(100%-2rem)]">{img.title}</p>
+                  {img.album && (
+                    <span className="text-white/70 text-xs">{img.album}</span>
+                  )}
+                </div>
                 <div className="flex justify-end gap-1">
+                  <button
+                    onClick={() => handleDownload(img.url, img.title)}
+                    className="rounded-md bg-white/20 hover:bg-white/40 p-1.5 transition-colors"
+                    title="Download"
+                  >
+                    <Download className="h-3.5 w-3.5 text-white" />
+                  </button>
                   <button
                     onClick={() => openEdit(img)}
                     className="rounded-md bg-white/20 hover:bg-white/40 p-1.5 transition-colors"
@@ -291,15 +319,9 @@ export default function Gallery() {
                     )}
                   </button>
                 </div>
-                <div>
-                  <p className="text-white text-xs font-medium truncate">{img.title}</p>
-                  {img.album && (
-                    <span className="text-white/70 text-xs">{img.album}</span>
-                  )}
-                </div>
               </div>
-              {/* Published toggle */}
-              <div className="absolute top-2 right-2">
+              {/* Published toggle — z-20 keeps it above the overlay */}
+              <div className="absolute top-2 right-2 z-20">
                 <Switch
                   checked={img.isPublished}
                   onCheckedChange={() => void togglePublished(img)}
@@ -307,7 +329,7 @@ export default function Gallery() {
                 />
               </div>
               {!img.isPublished && (
-                <Badge variant="warning" className="absolute bottom-2 right-2 text-xs px-1.5 py-0.5">
+                <Badge variant="warning" className="absolute bottom-2 left-2 z-20 text-xs px-1.5 py-0.5">
                   Hidden
                 </Badge>
               )}
@@ -325,6 +347,7 @@ export default function Gallery() {
                   <h4 className="font-medium">{img.title}</h4>
                   <div className="flex items-center gap-2">
                     <Switch checked={img.isPublished} onCheckedChange={() => void togglePublished(img)} className="scale-75" />
+                    <Button variant="ghost" size="icon" onClick={() => handleDownload(img.url, img.title)} title="Download"><Download className="h-4 w-4" /></Button>
                     <Button variant="ghost" onClick={() => openEdit(img)}><Pencil /></Button>
                     <Button variant="ghost" onClick={() => void handleDelete(img.id)}><Trash2 /></Button>
                   </div>

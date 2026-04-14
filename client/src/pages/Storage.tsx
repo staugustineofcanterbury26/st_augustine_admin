@@ -23,7 +23,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { storageApi, type BlobFile, type StorageInfo } from "@/lib/api";
-import { Trash2, RefreshCw, HardDrive, ExternalLink } from "lucide-react";
+import { Trash2, RefreshCw, HardDrive, ExternalLink, Download, Play, FileText } from "lucide-react";
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -53,6 +53,7 @@ export default function Storage() {
   const [info, setInfo] = useState<StorageInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingUrl, setDeletingUrl] = useState<string | null>(null);
+  const [downloadingUrl, setDownloadingUrl] = useState<string | null>(null);
   const [confirmDeleteUrl, setConfirmDeleteUrl] = useState<string | null>(null);
   const [confirmDeleteOrphans, setConfirmDeleteOrphans] = useState(false);
   const [deletingOrphans, setDeletingOrphans] = useState(false);
@@ -105,6 +106,27 @@ export default function Storage() {
       setConfirmDeleteOrphans(false);
     }
   };
+
+  const handleDownload = async (url: string, filename: string) => {
+    setDownloadingUrl(url);
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const localUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = localUrl;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(localUrl);
+    } catch {
+      toast.error("Failed to download file");
+    } finally {
+      setDownloadingUrl(null);
+    }
+  };
+
+  const IMAGE_EXTS = ["jpg", "jpeg", "png", "webp", "gif", "avif", "svg"];
+  const VIDEO_EXTS = ["mp4", "webm", "ogv", "mov"];
 
   const blobs = info?.blobs ?? [];
   const orphans = blobs.filter((b) => b.isOrphan);
@@ -196,17 +218,35 @@ export default function Storage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[52px]"></TableHead>
                   <TableHead>File</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Size</TableHead>
                   <TableHead>Uploaded</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-[80px]" />
+                  <TableHead className="w-[100px]" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {displayed.map((blob: BlobFile) => (
                   <TableRow key={blob.url}>
+                    <TableCell className="p-2">
+                      {IMAGE_EXTS.includes(blob.ext) ? (
+                        <img src={blob.url} alt="" className="h-10 w-10 object-cover rounded" loading="lazy" />
+                      ) : VIDEO_EXTS.includes(blob.ext) ? (
+                        <div className="h-10 w-10 bg-gray-900 rounded flex items-center justify-center">
+                          <Play className="h-4 w-4 text-white" />
+                        </div>
+                      ) : blob.ext === "pdf" ? (
+                        <div className="h-10 w-10 bg-red-50 border rounded flex items-center justify-center">
+                          <FileText className="h-4 w-4 text-red-400" />
+                        </div>
+                      ) : (
+                        <div className="h-10 w-10 bg-muted rounded flex items-center justify-center">
+                          <HardDrive className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell className="max-w-[300px]">
                       <div className="flex items-center gap-2">
                         <span className="truncate text-sm font-mono" title={blob.pathname}>
@@ -238,15 +278,31 @@ export default function Storage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        disabled={deletingUrl === blob.url}
-                        onClick={() => setConfirmDeleteUrl(blob.url)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          disabled={downloadingUrl === blob.url}
+                          onClick={() => handleDownload(blob.url, blob.pathname.split("/").pop() ?? "file")}
+                          title="Download"
+                        >
+                          {downloadingUrl === blob.url ? (
+                            <span className="h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin inline-block" />
+                          ) : (
+                            <Download className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          disabled={deletingUrl === blob.url}
+                          onClick={() => setConfirmDeleteUrl(blob.url)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
