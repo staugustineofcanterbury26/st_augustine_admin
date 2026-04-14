@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { galleryApi, type GalleryImage } from "@/lib/api";
-import { CheckCircle2, Search } from "lucide-react";
+import { CheckCircle2, Download, Search } from "lucide-react";
 
 interface ImageGallerySelectorProps {
   open: boolean;
@@ -60,6 +60,25 @@ export function ImageGallerySelector({ open, onClose, onSelect }: ImageGallerySe
       img.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       img.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleDownload = async (url: string, filename: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!/^https?:\/\//i.test(url)) return;
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objUrl);
+    } catch {
+      toast.error("Download failed");
+    }
+  };
 
   const handleSelect = () => {
     if (selectedId === null) return;
@@ -142,6 +161,13 @@ export function ImageGallerySelector({ open, onClose, onSelect }: ImageGallerySe
                       <CheckCircle2 className="h-8 w-8 text-blue-600" />
                     </div>
                   )}
+                  <button
+                    onClick={(e) => handleDownload(image.url, image.title || "image", e)}
+                    className="absolute top-1 right-1 z-10 bg-black/60 hover:bg-black/80 text-white rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Download"
+                  >
+                    <Download className="h-3 w-3" />
+                  </button>
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-end">
                     <div className="w-full p-2 bg-gradient-to-t from-black to-transparent text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
                       {image.title}

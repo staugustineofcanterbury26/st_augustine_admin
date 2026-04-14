@@ -6,7 +6,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, X, Play, Video } from "lucide-react";
 import { VideoGallerySelector } from "./VideoGallerySelector";
-import { type GalleryImage } from "@/lib/api";
 
 interface VideoUploadProps {
   /** Label for the form field */
@@ -99,7 +98,7 @@ export function VideoUpload({
     }
   };
 
-  const handleGallerySelect = async (video: GalleryImage) => {
+  const handleGallerySelect = async (video: { url: string }) => {
     if (onGallerySelect) {
       setUploading(true);
       try {
