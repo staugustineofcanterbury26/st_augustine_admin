@@ -390,7 +390,19 @@ export default function NavigationFormDialog({
                       src={form.watch("megaImage")}
                       alt="Feature preview"
                       className="h-24 rounded border object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = "none";
+                        const warn = e.currentTarget.nextElementSibling as HTMLElement | null;
+                        if (warn) warn.style.display = "flex";
+                      }}
                     />
+                    <div
+                      style={{ display: "none" }}
+                      className="h-24 w-32 rounded border border-red-300 bg-red-50 flex-col items-center justify-center text-xs text-red-600 p-2 text-center"
+                    >
+                      <span className="font-semibold">Image not found</span>
+                      <span className="mt-0.5 text-[10px]">The file no longer exists. Remove and re-upload.</span>
+                    </div>
                     <button
                       type="button"
                       onClick={() => form.setValue("megaImage", "")}

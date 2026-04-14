@@ -123,7 +123,20 @@ export function ImageGallerySelector({ open, onClose, onSelect }: ImageGallerySe
                     src={image.thumbnailUrl || image.url || undefined}
                     alt={image.title}
                     className="w-full aspect-square object-cover"
+                    onError={(e) => {
+                      const el = e.currentTarget;
+                      el.style.display = "none";
+                      const placeholder = el.nextElementSibling as HTMLElement | null;
+                      if (placeholder) placeholder.style.display = "flex";
+                    }}
                   />
+                  <div
+                    style={{ display: "none" }}
+                    className="w-full aspect-square bg-gray-100 flex-col items-center justify-center text-gray-400 text-[10px] text-center p-1"
+                  >
+                    <span className="text-lg mb-0.5">⚠️</span>
+                    <span>File missing</span>
+                  </div>
                   {selectedId === image.id && (
                     <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
                       <CheckCircle2 className="h-8 w-8 text-blue-600" />

@@ -659,7 +659,20 @@ export default function Pages() {
                 <Label>Hero image <span className="text-muted-foreground font-normal">(full-width banner)</span></Label>
                 {imageUrl ? (
                   <div className="relative rounded-lg overflow-hidden border border-input h-32 bg-muted">
-                    <img src={imageUrl} alt="Hero" className="w-full h-full object-cover" />
+                    <img
+                      src={imageUrl}
+                      alt="Hero"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = "none";
+                        const warn = e.currentTarget.nextElementSibling as HTMLElement | null;
+                        if (warn) warn.style.display = "flex";
+                      }}
+                    />
+                    <div style={{ display: "none" }} className="w-full h-full bg-red-50 border-red-200 flex-col items-center justify-center text-xs text-red-600 text-center p-2">
+                      <span className="font-semibold">Image not found</span>
+                      <span className="mt-0.5 text-[10px]">File deleted from storage. Remove and re-upload.</span>
+                    </div>
                     {editing && (
                       <button type="button" onClick={handleRemoveImage}
                         className="absolute top-1.5 right-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors" title="Remove">
@@ -704,7 +717,20 @@ export default function Pages() {
                 <Label>Body image <span className="text-muted-foreground font-normal">(side layout in content)</span></Label>
                 {bodyImageUrl ? (
                   <div className="relative rounded-lg overflow-hidden border border-input h-32 bg-muted">
-                    <img src={bodyImageUrl} alt="Body" className="w-full h-full object-cover" />
+                    <img
+                      src={bodyImageUrl}
+                      alt="Body"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = "none";
+                        const warn = e.currentTarget.nextElementSibling as HTMLElement | null;
+                        if (warn) warn.style.display = "flex";
+                      }}
+                    />
+                    <div style={{ display: "none" }} className="w-full h-full bg-red-50 border-red-200 flex-col items-center justify-center text-xs text-red-600 text-center p-2">
+                      <span className="font-semibold">Image not found</span>
+                      <span className="mt-0.5 text-[10px]">File deleted from storage. Remove and re-upload.</span>
+                    </div>
                     {editing && (
                       <button type="button" onClick={handleRemoveBodyImage}
                         className="absolute top-1.5 right-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors" title="Remove">
