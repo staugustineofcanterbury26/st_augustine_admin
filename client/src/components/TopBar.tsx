@@ -70,7 +70,7 @@ export default function TopBar({ title, description, onOpenSidebar }: TopBarProp
           </Button>
         </Link>
         <a
-          href={import.meta.env.VITE_FRONTEND_URL ?? "https://st-augustine-frontend.vercel.app"}
+          href={import.meta.env.VITE_FRONTEND_URL ?? "https://staugustineofcanterbury.ca"}
           target="_blank"
           rel="noopener noreferrer"
         >
