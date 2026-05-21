@@ -342,6 +342,18 @@ export const pastoralUnitApi = {
 
 // ── Pages ─────────────────────────────────────────────────────────────────────
 
+export interface PageImage {
+  id: number;
+  pageId: number;
+  imageUrl: string;
+  title: string | null;
+  subtitle: string | null;
+  description: string | null;
+  caption: string | null;
+  sortOrder: number;
+  createdAt: string;
+}
+
 export interface Page {
   id: number;
   title: string;
@@ -358,6 +370,9 @@ export interface Page {
   imageUrl: string | null;
   bodyImageUrl: string | null;
   bodyImageCaption: string | null;
+  bodyImageTemplate: "single" | "grid" | "sequential" | "carousel";
+  imageShape: "circle" | "square" | "rounded";
+  imageSize: "small" | "medium" | "large";
   isPublished: boolean;
   showInNav: boolean;
   navLabel: string | null;
@@ -367,10 +382,13 @@ export interface Page {
   updatedAt: string;
 }
 
-export type PageInput = Omit<Page, "id" | "createdAt" | "updatedAt" | "imageUrl" | "bodyImageUrl" | "bodyImageCaption"> & {
+export type PageInput = Omit<Page, "id" | "createdAt" | "updatedAt" | "imageUrl" | "bodyImageUrl" | "bodyImageCaption" | "bodyImageTemplate"> & {
   imageUrl?: string | null;
   bodyImageUrl?: string | null;
   bodyImageCaption?: string | null;
+  bodyImageTemplate?: "single" | "grid" | "sequential" | "carousel";
+  imageShape?: "circle" | "square" | "rounded";
+  imageSize?: "small" | "medium" | "large";
 };
 
 export const pagesApi = {
@@ -390,6 +408,23 @@ export const pagesApi = {
     api.post<Page>(`/api/pages/${id}/body-image`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
+  // Multi-image template methods
+  getPageImages: (id: number) =>
+    api.get<PageImage[]>(`/api/pages/${id}/images`),
+  uploadBodyImageMulti: (id: number, formData: FormData) =>
+    api.post<PageImage[]>(`/api/pages/${id}/images`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+  updateBodyImage: (id: number, imageId: number, data: Partial<Pick<PageImage, "title" | "subtitle" | "description" | "caption" | "sortOrder">>) =>
+    api.put<PageImage>(`/api/pages/${id}/images/${imageId}`, data),
+  deleteBodyImage: (id: number, imageId: number) =>
+    api.delete<PageImage[]>(`/api/pages/${id}/images/${imageId}`),
+  // Helper: add existing URL as new image (for template switching)
+  addBodyImage: (pageId: number, imageUrl: string, caption: string, title?: string, subtitle?: string, description?: string) =>
+    api.post<PageImage[]>(`/api/pages/${pageId}/images`, 
+      { imageUrl, caption, title, subtitle, description },
+      { headers: { "Content-Type": "application/json" } }
+    ),
 };
 
 // ── Contact Messages (admin) ────────────────────────────────────────────────
