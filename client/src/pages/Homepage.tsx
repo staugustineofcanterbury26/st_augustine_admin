@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useFieldArray, useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -47,6 +47,7 @@ const sectionSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string(),
   linkTarget: z.string().min(1, "Link target is required"),
+  imageUrl: z.string().nullable().optional(),
   isActive: z.boolean(),
   sortOrder: z.number(),
 });
@@ -382,6 +383,7 @@ export default function Homepage() {
                       title: "",
                       description: "",
                       linkTarget: "/",
+                      imageUrl: null,
                       isActive: true,
                       sortOrder: nextOrder,
                     });
@@ -480,6 +482,13 @@ export default function Homepage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Section Image (takes precedence over icon) */}
+                  <SectionImageUpload
+                    currentUrl={form.watch(`sections.${index}.imageUrl`) ?? null}
+                    onUploaded={(url) => form.setValue(`sections.${index}.imageUrl`, url)}
+                    onRemove={() => form.setValue(`sections.${index}.imageUrl`, null)}
+                  />
                   
                   <div className="space-y-1">
                     <Label className="text-xs">Description</Label>
@@ -513,5 +522,81 @@ export default function Homepage() {
         </div>
       </form>
     </AdminLayout>
+  );
+}
+
+// ── Section Image Upload Component ────────────────────────────────────────────
+
+function SectionImageUpload({
+  currentUrl,
+  onUploaded,
+  onRemove,
+}: {
+  currentUrl: string | null;
+  onUploaded: (url: string) => void;
+  onRemove: () => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 1 * 1024 * 1024) {
+      toast.error("Image must be under 1MB");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await homepageApi.uploadSectionImage(formData);
+      onUploaded(res.data.imageUrl);
+      toast.success("Image uploaded");
+    } catch {
+      toast.error("Failed to upload image");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs">Section Image <span className="text-muted-foreground">(optional — overrides icon)</span></Label>
+      {currentUrl ? (
+        <div className="flex items-center gap-3">
+          <img src={currentUrl} alt="" className="h-12 w-12 rounded object-cover border" />
+          <Button type="button" variant="ghost" size="sm" className="text-destructive text-xs" onClick={onRemove}>
+            <Trash2 className="h-3 w-3 mr-1" /> Remove
+          </Button>
+        </div>
+      ) : (
+        <div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFile}
+            className="hidden"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs"
+            disabled={uploading}
+            onClick={() => fileRef.current?.click()}
+          >
+            <Image className="h-3 w-3 mr-1.5" />
+            {uploading ? "Uploading…" : "Upload Image"}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
