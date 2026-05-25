@@ -243,9 +243,9 @@ export default function ContactMessages() {
                         : ""
                     } ${m.isRead ? "opacity-70" : ""}`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-0.5">
+                    <div className="min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-0.5">
+                        <div className="flex items-center gap-2 min-w-0">
                           {!m.isRead && (
                             <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
                           )}
@@ -259,23 +259,23 @@ export default function ContactMessages() {
                             {m.name}
                           </span>
                         </div>
-                        <p
-                          className={`text-sm truncate ${
-                            m.isRead
-                              ? "text-muted-foreground"
-                              : "font-medium text-foreground"
-                          }`}
-                        >
-                          {m.subject}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">
-                          {m.message.slice(0, 60)}
-                          {m.message.length > 60 ? "…" : ""}
-                        </p>
+                        <time className="text-[11px] text-muted-foreground flex-shrink-0 whitespace-nowrap">
+                          {formatDate(m.createdAt)}
+                        </time>
                       </div>
-                      <time className="text-[11px] text-muted-foreground flex-shrink-0 pt-0.5">
-                        {formatDate(m.createdAt)}
-                      </time>
+                      <p
+                        className={`text-sm truncate ${
+                          m.isRead
+                            ? "text-muted-foreground"
+                            : "font-medium text-foreground"
+                        }`}
+                      >
+                        {m.subject}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {m.message.slice(0, 60)}
+                        {m.message.length > 60 ? "…" : ""}
+                      </p>
                     </div>
                   </button>
                 ))}
