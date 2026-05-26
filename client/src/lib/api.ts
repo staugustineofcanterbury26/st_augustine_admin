@@ -528,6 +528,7 @@ export interface HomepageFeaturedSection {
   description: string;
   linkTarget: string;
   imageUrl: string | null;
+  imageColor: string | null;
   isActive: boolean;
   sortOrder: number;
   updatedAt: string;
@@ -590,7 +591,7 @@ export const homepageApi = {
     api.put<HomepageFeaturedSection[]>("/api/homepage/sections", sections),
   getSections: () => api.get<HomepageFeaturedSection[]>("/api/homepage/sections"),
   uploadSectionImage: (formData: FormData) =>
-    api.post<{ imageUrl: string }>("/api/homepage/sections/image", formData, {
+    api.post<{ imageUrl: string; imageColor: string | null }>("/api/homepage/sections/image", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
 };

@@ -48,6 +48,7 @@ const sectionSchema = z.object({
   description: z.string(),
   linkTarget: z.string().min(1, "Link target is required"),
   imageUrl: z.string().nullable().optional(),
+  imageColor: z.string().nullable().optional(),
   isActive: z.boolean(),
   sortOrder: z.number(),
 });
@@ -384,6 +385,7 @@ export default function Homepage() {
                       description: "",
                       linkTarget: "/",
                       imageUrl: null,
+                      imageColor: null,
                       isActive: true,
                       sortOrder: nextOrder,
                     });
@@ -486,8 +488,15 @@ export default function Homepage() {
                   {/* Section Image (takes precedence over icon) */}
                   <SectionImageUpload
                     currentUrl={form.watch(`sections.${index}.imageUrl`) ?? null}
-                    onUploaded={(url) => form.setValue(`sections.${index}.imageUrl`, url)}
-                    onRemove={() => form.setValue(`sections.${index}.imageUrl`, null)}
+                    currentColor={form.watch(`sections.${index}.imageColor`) ?? null}
+                    onUploaded={(url, color) => {
+                      form.setValue(`sections.${index}.imageUrl`, url);
+                      form.setValue(`sections.${index}.imageColor`, color);
+                    }}
+                    onRemove={() => {
+                      form.setValue(`sections.${index}.imageUrl`, null);
+                      form.setValue(`sections.${index}.imageColor`, null);
+                    }}
                   />
                   
                   <div className="space-y-1">
@@ -529,11 +538,13 @@ export default function Homepage() {
 
 function SectionImageUpload({
   currentUrl,
+  currentColor,
   onUploaded,
   onRemove,
 }: {
   currentUrl: string | null;
-  onUploaded: (url: string) => void;
+  currentColor: string | null;
+  onUploaded: (url: string, color: string | null) => void;
   onRemove: () => void;
 }) {
   const [uploading, setUploading] = useState(false);
@@ -555,7 +566,7 @@ function SectionImageUpload({
       const formData = new FormData();
       formData.append("file", file);
       const res = await homepageApi.uploadSectionImage(formData);
-      onUploaded(res.data.imageUrl);
+      onUploaded(res.data.imageUrl, res.data.imageColor ?? null);
       toast.success("Image uploaded");
     } catch {
       toast.error("Failed to upload image");
@@ -570,7 +581,21 @@ function SectionImageUpload({
       <Label className="text-xs">Section Image <span className="text-muted-foreground">(optional — overrides icon)</span></Label>
       {currentUrl ? (
         <div className="flex items-center gap-3">
-          <img src={currentUrl} alt="" className="h-12 w-12 rounded object-cover border" />
+          <div
+            className="h-12 w-12 rounded border flex items-center justify-center overflow-hidden"
+            style={currentColor ? { backgroundColor: currentColor } : undefined}
+          >
+            <img src={currentUrl} alt="" className="h-full w-full object-contain" />
+          </div>
+          {currentColor && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span
+                className="inline-block h-3 w-3 rounded-full border"
+                style={{ backgroundColor: currentColor }}
+              />
+              {currentColor}
+            </div>
+          )}
           <Button type="button" variant="ghost" size="sm" className="text-destructive text-xs" onClick={onRemove}>
             <Trash2 className="h-3 w-3 mr-1" /> Remove
           </Button>
