@@ -271,6 +271,14 @@ export default function Navigation() {
           </Button>
         </div>
 
+        {/* Note about Pages component */}
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <p className="text-sm font-semibold text-amber-900 mb-2">💡 Best Practice:</p>
+          <p className="text-sm text-amber-800">
+            The <strong>Pages component</strong> is the recommended way to organize and manage pages on your website. Use this Navigation Management tool only when the Pages component doesn't provide the functionality you need.
+          </p>
+        </div>
+
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-blue-50 p-4 rounded-lg">

@@ -40,7 +40,6 @@ const navGroups = [
     label: "Content",
     items: [
       { href: "/homepage", label: "Homepage", icon: LayoutTemplate },
-      { href: "/navigation", label: "Navigation", icon: MenuIcon },
       { href: "/mass-times", label: "Mass Times", icon: Clock },
       { href: "/events", label: "Events", icon: CalendarDays },
       { href: "/sacraments", label: "Sacraments", icon: BookOpen },
@@ -71,6 +70,7 @@ const navGroups = [
     items: [
       { href: "/parish-info", label: "Parish Info", icon: Church },
       { href: "/settings", label: "Account", icon: Settings },
+      { href: "/navigation", label: "Navigation", icon: MenuIcon },
     ],
   },
 ];

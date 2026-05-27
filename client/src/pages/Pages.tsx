@@ -141,6 +141,16 @@ export default function Pages() {
   const [uploadingBodyImages, setUploadingBodyImages] = useState(false);
   const bodyImagesInputRef = useRef<HTMLInputElement>(null);
 
+  const sortedPages = [...pages].sort((a, b) => {
+    const orderDiff = a.sortOrder - b.sortOrder;
+    if (orderDiff !== 0) return orderDiff;
+
+    const titleDiff = a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+    if (titleDiff !== 0) return titleDiff;
+
+    return a.id - b.id;
+  });
+
   const form = useForm<PageForm>({
     resolver: zodResolver(pageSchema) as any,
     defaultValues: formDefault(),
@@ -656,7 +666,7 @@ export default function Pages() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pages.map((page) => (
+              {sortedPages.map((page) => (
                 <TableRow key={page.id}>
                   <TableCell className="font-medium">{page.title}</TableCell>
                   <TableCell>
