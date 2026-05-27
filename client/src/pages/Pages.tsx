@@ -116,6 +116,27 @@ function flattenNavOptions(
   return result;
 }
 
+// ── Nav section view types ───────────────────────────────────────────────────
+
+type NavSectionEntry =
+  | { kind: "navItem"; navItem: NavigationItem; parentNavId: number }
+  | { kind: "page"; page: Page; groupSlug: string };
+
+type NavSubGroup = {
+  navItem: NavigationItem;
+  entries: NavSectionEntry[];
+  pageCount: number;
+};
+
+type NavSection = {
+  slug: string;
+  label: string;
+  isStandalone: boolean;
+  directEntries: NavSectionEntry[];
+  subGroups: NavSubGroup[];
+  totalPageCount: number;
+};
+
 export default function Pages() {
   const [pages, setPages] = useState<Page[]>([]);
   const [navItems, setNavItems] = useState<NavigationItem[]>([]);
@@ -154,102 +175,168 @@ export default function Pages() {
     [pages]
   );
 
-  // ── Grouped sections (used in "By Nav Section" tab) ─────────────────────────
-  // Build: ordered nav sections → pages sorted within each section.
-  // Pages not in any nav section (or with showInNav=false) go to "standalone".
-  const groupedSections = useMemo(() => {
-    // Map each page's navPosition slug → sorted page list
-    const pagesBySlug = new Map<string, Page[]>();
-    for (const page of pages) {
-      const bucket = !page.showInNav || !page.navPosition || page.navPosition === "none"
-        ? "__standalone__"
-        : page.navPosition;
-      const list = pagesBySlug.get(bucket) ?? [];
-      list.push(page);
-      pagesBySlug.set(bucket, list);
-    }
-    // Sort pages within each bucket by sortOrder then title
-    const sortBucket = (list: Page[]) =>
-      list.sort((a, b) => {
-        const od = a.sortOrder - b.sortOrder;
-        if (od !== 0) return od;
-        return a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
-      });
-    for (const [slug, list] of Array.from(pagesBySlug)) {
-      pagesBySlug.set(slug, sortBucket(list));
-    }
-
-    // Flatten L1+L2 nav items in their sortOrder to drive section header order
-    const flatNav: NavigationItem[] = [];
-    const walk = (items: NavigationItem[]) => {
-      const sorted = [...items].sort((a, b) => a.sortOrder - b.sortOrder);
-      for (const item of sorted) {
-        if (item.level <= 2) flatNav.push(item);
-        if (item.children?.length) walk(item.children);
-      }
+  // ── pages keyed by navPosition slug (move handler + grouped view) ───────────
+  const pagesByNavSlug = useMemo(() => {
+    const sortFn = (a: Page, b: Page) => {
+      const od = a.sortOrder - b.sortOrder;
+      if (od !== 0) return od;
+      return a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
     };
-    walk(navItems);
+    const map = new Map<string, Page[]>();
+    for (const page of pages) {
+      const key =
+        !page.showInNav || !page.navPosition || page.navPosition === "none"
+          ? "__standalone__"
+          : page.navPosition;
+      const list = map.get(key) ?? [];
+      list.push(page);
+      map.set(key, list);
+    }
+    for (const [k, list] of Array.from(map)) {
+      map.set(k, [...list].sort(sortFn));
+    }
+    return map;
+  }, [pages]);
 
-    // Build ordered sections, only including ones that actually have pages
-    const sections: { slug: string; label: string; level: number; pages: Page[] }[] = [];
-    for (const item of flatNav) {
-      const list = pagesBySlug.get(item.slug);
-      if (list && list.length > 0) {
-        sections.push({ slug: item.slug, label: item.label, level: item.level, pages: list });
+  // ── Grouped sections — mirrors the full frontend nav structure ────────────
+  // Each L1 section contains its L3 direct nav children + pages tagged to L1,
+  // plus L2 sub-groups each with their L3 nav children + pages tagged to L2.
+  // Nav items and pages are interleaved by sortOrder so pages can appear between nav items.
+  const groupedSections = useMemo((): NavSection[] => {
+    const sections: NavSection[] = [];
+    const l1Items = [...navItems]
+      .filter((i) => i.level === 1)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+
+    const interleave = (navs: NavigationItem[], pgs: Page[], parentNavId: number, groupSlug: string): NavSectionEntry[] => {
+      const entries: NavSectionEntry[] = [
+        ...navs.map((ni) => ({ kind: "navItem" as const, navItem: ni, parentNavId })),
+        ...pgs.map((page) => ({ kind: "page" as const, page, groupSlug })),
+      ];
+      entries.sort((a, b) => {
+        const aSort = a.kind === "navItem" ? a.navItem.sortOrder : a.page.sortOrder;
+        const bSort = b.kind === "navItem" ? b.navItem.sortOrder : b.page.sortOrder;
+        return aSort - bSort;
+      });
+      return entries;
+    };
+
+    for (const l1 of l1Items) {
+      const l1Pages = pagesByNavSlug.get(l1.slug) ?? [];
+      const l3Direct = (l1.children ?? [])
+        .filter((c) => c.level === 3)
+        .sort((a, b) => a.sortOrder - b.sortOrder);
+      const l2Children = (l1.children ?? [])
+        .filter((c) => c.level === 2)
+        .sort((a, b) => a.sortOrder - b.sortOrder);
+
+      const directEntries = interleave(l3Direct, l1Pages, l1.id, l1.slug);
+
+      const subGroups: NavSubGroup[] = l2Children.map((l2) => {
+        const l2Pages = pagesByNavSlug.get(l2.slug) ?? [];
+        const l3Children = (l2.children ?? []).sort((a, b) => a.sortOrder - b.sortOrder);
+        const entries = interleave(l3Children, l2Pages, l2.id, l2.slug);
+        return { navItem: l2, entries, pageCount: l2Pages.length };
+      });
+
+      const totalPageCount =
+        l1Pages.length + subGroups.reduce((sum, sg) => sum + sg.pageCount, 0);
+
+      if (directEntries.length > 0 || subGroups.some((sg) => sg.entries.length > 0)) {
+        sections.push({
+          slug: l1.slug,
+          label: l1.label,
+          isStandalone: false,
+          directEntries,
+          subGroups,
+          totalPageCount,
+        });
       }
     }
 
-    // Standalone bucket always last
-    const standalone = pagesBySlug.get("__standalone__") ?? [];
+    const standalone = pagesByNavSlug.get("__standalone__") ?? [];
     if (standalone.length > 0) {
       sections.push({
         slug: "__standalone__",
         label: "Standalone",
-        level: 0,
-        pages: sortBucket(standalone),
+        isStandalone: true,
+        directEntries: standalone.map((page) => ({
+          kind: "page" as const,
+          page,
+          groupSlug: "__standalone__",
+        })),
+        subGroups: [],
+        totalPageCount: standalone.length,
       });
     }
 
     return sections;
-  }, [pages, navItems]);
+  }, [navItems, pagesByNavSlug]);
 
-  // ── Move a page up/down within its nav section ──────────────────────────────
-  const handleMovePageInSection = async (
-    sectionSlug: string,
-    pageIndex: number,
+  // ── Optimistically patch nav item sortOrders in the nested state tree ────
+  const patchNavItemSortOrders = (updates: { id: number; sortOrder: number }[]) => {
+    const updateMap = new Map(updates.map((u) => [u.id, u.sortOrder]));
+    const patch = (items: NavigationItem[]): NavigationItem[] =>
+      items.map((item) => ({
+        ...item,
+        sortOrder: updateMap.has(item.id) ? updateMap.get(item.id)! : item.sortOrder,
+        children: item.children ? patch(item.children) : item.children,
+      }));
+    setNavItems((prev) => patch(prev));
+  };
+
+  // ── Move any entry (nav item or page) up/down within its unified list ─────
+  const handleMoveEntry = async (
+    entries: NavSectionEntry[],
+    moveIndex: number,
     direction: "up" | "down"
   ) => {
-    const section = groupedSections.find((s) => s.slug === sectionSlug);
-    if (!section) return;
-    const list = [...section.pages];
-    const swapIndex = direction === "up" ? pageIndex - 1 : pageIndex + 1;
-    if (swapIndex < 0 || swapIndex >= list.length) return;
+    const swapIndex = direction === "up" ? moveIndex - 1 : moveIndex + 1;
+    if (swapIndex < 0 || swapIndex >= entries.length) return;
 
-    // Determine new sort orders: swap the values
-    const aPage = list[pageIndex];
-    const bPage = list[swapIndex];
-    const aNewOrder = bPage.sortOrder !== aPage.sortOrder
-      ? bPage.sortOrder
-      : direction === "up" ? aPage.sortOrder - 1 : aPage.sortOrder + 1;
-    const bNewOrder = aPage.sortOrder;
+    // Swap and renumber sequentially
+    const newOrder = [...entries];
+    [newOrder[moveIndex], newOrder[swapIndex]] = [newOrder[swapIndex], newOrder[moveIndex]];
 
-    // Optimistic local update
-    setPages((prev) =>
-      prev.map((p) => {
-        if (p.id === aPage.id) return { ...p, sortOrder: aNewOrder };
-        if (p.id === bPage.id) return { ...p, sortOrder: bNewOrder };
-        return p;
-      })
-    );
+    // Collect updates
+    const navUpdates: { id: number; sortOrder: number }[] = [];
+    const pageUpdates: { id: number; sortOrder: number }[] = [];
+    for (let i = 0; i < newOrder.length; i++) {
+      const e = newOrder[i];
+      if (e.kind === "navItem") {
+        if (e.navItem.sortOrder !== i) navUpdates.push({ id: e.navItem.id, sortOrder: i });
+      } else {
+        if (e.page.sortOrder !== i) pageUpdates.push({ id: e.page.id, sortOrder: i });
+      }
+    }
 
+    // Optimistic state updates
+    if (navUpdates.length > 0) patchNavItemSortOrders(navUpdates);
+    if (pageUpdates.length > 0) {
+      const pageMap = new Map(pageUpdates.map((u) => [u.id, u.sortOrder]));
+      setPages((prev) => prev.map((p) => pageMap.has(p.id) ? { ...p, sortOrder: pageMap.get(p.id)! } : p));
+    }
+
+    // Persist
     try {
-      await Promise.all([
-        pagesApi.update(aPage.id, { sortOrder: aNewOrder }),
-        pagesApi.update(bPage.id, { sortOrder: bNewOrder }),
-      ]);
+      const promises: Promise<unknown>[] = [];
+      if (navUpdates.length > 0) {
+        // Use the parentNavId from the first nav item in the list
+        const parentNavId = newOrder.find((e) => e.kind === "navItem")?.parentNavId;
+        if (parentNavId != null) {
+          const navPositions = newOrder
+            .map((e, i) => e.kind === "navItem" ? { id: e.navItem.id, sortOrder: i } : null)
+            .filter((x): x is { id: number; sortOrder: number } => x !== null);
+          promises.push(navigationApi.reorder(parentNavId, navPositions));
+        }
+      }
+      for (const { id, sortOrder } of pageUpdates) {
+        promises.push(pagesApi.update(id, { sortOrder }));
+      }
+      await Promise.all(promises);
     } catch {
-      toast.error("Failed to reorder pages");
-      load(); // revert on failure
+      toast.error("Failed to reorder items");
+      load();
     }
   };
 
@@ -757,142 +844,154 @@ export default function Pages() {
         </div>
       ) : (
         /* Tabbed view */
-        <Tabs defaultValue="by-nav">
+        <Tabs defaultValue="all">
           <TabsList className="mb-4">
-            <TabsTrigger value="by-nav">By Nav Section</TabsTrigger>
             <TabsTrigger value="all">All Pages</TabsTrigger>
+            <TabsTrigger value="by-nav">By Nav Section</TabsTrigger>
           </TabsList>
 
           {/* ── BY NAV SECTION tab ─────────────────────────────────────── */}
           <TabsContent value="by-nav" className="space-y-4">
             {groupedSections.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">
-                No pages are linked to navigation sections yet. Edit a page and set its Nav Position.
+                No navigation sections found. Add items in the Navigation page first.
               </p>
             ) : (
-              groupedSections.map((section) => (
-                <div key={section.slug} className="rounded-lg border overflow-hidden">
-                  {/* Section header */}
-                  <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/40 border-b">
-                    {section.slug === "__standalone__" ? (
-                      <Badge variant="outline" className="text-xs text-muted-foreground">Standalone</Badge>
-                    ) : section.level === 1 ? (
-                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">Main</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700">Sub-Cat</Badge>
-                    )}
-                    <span className="font-medium text-sm">{section.label}</span>
-                    <span className="ml-auto text-xs text-muted-foreground">
-                      {section.pages.length} page{section.pages.length !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-
-                  {/* Pages in this section */}
-                  <Table>
-                    <TableBody>
-                      {section.pages.map((page, idx) => (
-                        <TableRow key={page.id}>
-                          {/* Sort order controls */}
-                          <TableCell className="w-16 pr-0">
-                            <div className="flex flex-col items-center gap-0.5">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-5 w-5"
-                                disabled={idx === 0}
-                                onClick={() => handleMovePageInSection(section.slug, idx, "up")}
-                              >
-                                <ChevronUp className="h-3 w-3" />
-                              </Button>
-                              <span className="text-[10px] text-muted-foreground tabular-nums">
-                                {page.sortOrder}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-5 w-5"
-                                disabled={idx === section.pages.length - 1}
-                                onClick={() => handleMovePageInSection(section.slug, idx, "down")}
-                              >
-                                <ChevronDown className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </TableCell>
-
-                          {/* Title */}
-                          <TableCell className="font-medium">
-                            {page.navLabel && page.navLabel !== page.title ? (
-                              <>
-                                <span>{page.navLabel}</span>
-                                <span className="ml-1.5 text-xs text-muted-foreground font-normal">({page.title})</span>
-                              </>
-                            ) : (
-                              page.title
-                            )}
-                          </TableCell>
-
-                          {/* Slug */}
-                          <TableCell className="hidden sm:table-cell">
-                            <code className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
-                              /pages/{page.slug}
-                            </code>
-                          </TableCell>
-
-                          {/* Status */}
-                          <TableCell>
-                            <button onClick={() => handlePublishToggle(page)}>
-                              {page.isPublished ? (
-                                <Badge className="bg-green-100 text-green-700 hover:bg-green-200 cursor-pointer gap-1">
-                                  <Globe className="h-3 w-3" /> Published
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="text-muted-foreground cursor-pointer gap-1">
-                                  <EyeOff className="h-3 w-3" /> Draft
-                                </Badge>
-                              )}
-                            </button>
-                          </TableCell>
-
-                          {/* Actions */}
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                title="Preview page"
-                                onClick={async () => {
-                                  try {
-                                    const res = await pagesApi.getPreviewToken(page.slug);
-                                    const token = res.data.previewToken;
-                                    const url = `${frontendBase}/pages/${page.slug}?previewToken=${encodeURIComponent(token)}`;
-                                    window.open(url, "_blank", "noopener,noreferrer");
-                                  } catch {
-                                    toast.error("Failed to get preview token");
-                                  }
-                                }}
-                              >
+              groupedSections.map((section) => {
+                // Helper: render one entry row — nav item (read-only) or custom page (sortable)
+                const renderEntry = (entry: NavSectionEntry, idx: number, entries: NavSectionEntry[]) => {
+                  if (entry.kind === "navItem") {
+                    const { navItem: ni } = entry;
+                    const dest = ni.href ?? null;
+                    return (
+                      <TableRow key={`ni-${ni.id}`} className="bg-muted/20">
+                        <TableCell className="text-sm text-muted-foreground italic">{ni.label}</TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          {dest && <code className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{dest}</code>}
+                        </TableCell>
+                        <TableCell />
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-0.5">
+                            {dest && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Open link"
+                                onClick={() => window.open(
+                                  dest.startsWith("http") ? dest : `${frontendBase}${dest}`,
+                                  "_blank", "noopener,noreferrer"
+                                )}>
                                 <ExternalLink className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="icon" onClick={() => openEdit(page)}>
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => { setDeleteTarget(page); setDeleteConfirmText(""); }}
-                                disabled={deletingId === page.id}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ))
+                            )}
+                            <Button variant="ghost" size="icon" className="h-7 w-7"
+                              disabled={idx === 0}
+                              onClick={() => handleMoveEntry(entries, idx, "up")}>
+                              <ChevronUp className="h-3.5 w-3.5" />
+                            </Button>
+                            <span className="text-[10px] text-muted-foreground tabular-nums w-4 text-center">{ni.sortOrder}</span>
+                            <Button variant="ghost" size="icon" className="h-7 w-7"
+                              disabled={idx === entries.length - 1}
+                              onClick={() => handleMoveEntry(entries, idx, "down")}>
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }
+                  const { page } = entry;
+                  return (
+                    <TableRow key={`pg-${page.id}`}>
+                      <TableCell className="font-medium">
+                        {page.navLabel && page.navLabel !== page.title ? (
+                          <><span>{page.navLabel}</span><span className="ml-1.5 text-xs text-muted-foreground font-normal">({page.title})</span></>
+                        ) : page.title}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">/pages/{page.slug}</code>
+                      </TableCell>
+                      <TableCell>
+                        <button onClick={() => handlePublishToggle(page)}>
+                          {page.isPublished
+                            ? <Badge className="bg-green-100 text-green-700 hover:bg-green-200 cursor-pointer gap-1"><Globe className="h-3 w-3" /> Published</Badge>
+                            : <Badge variant="outline" className="text-muted-foreground cursor-pointer gap-1"><EyeOff className="h-3 w-3" /> Draft</Badge>}
+                        </button>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-0.5">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Preview page"
+                            onClick={async () => {
+                              try {
+                                const res = await pagesApi.getPreviewToken(page.slug);
+                                const url = `${frontendBase}/pages/${page.slug}?previewToken=${encodeURIComponent(res.data.previewToken)}`;
+                                window.open(url, "_blank", "noopener,noreferrer");
+                              } catch { toast.error("Failed to get preview token"); }
+                            }}>
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(page)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={() => { setDeleteTarget(page); setDeleteConfirmText(""); }}
+                            disabled={deletingId === page.id}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7"
+                            disabled={idx === 0}
+                            onClick={() => handleMoveEntry(entries, idx, "up")}>
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          </Button>
+                          <span className="text-[10px] text-muted-foreground tabular-nums w-4 text-center">{page.sortOrder}</span>
+                          <Button variant="ghost" size="icon" className="h-7 w-7"
+                            disabled={idx === entries.length - 1}
+                            onClick={() => handleMoveEntry(entries, idx, "down")}>
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                };
+
+                return (
+                  <div key={section.slug} className="rounded-lg border overflow-hidden">
+                    {/* L1 section header */}
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/40 border-b">
+                      {section.isStandalone
+                        ? <Badge variant="outline" className="text-xs text-muted-foreground">Standalone</Badge>
+                        : <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">Main</Badge>}
+                      <span className="font-medium text-sm">{section.label}</span>
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {section.totalPageCount} page{section.totalPageCount !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+
+                    {/* Direct entries under L1: L3 nav items + pages tagged to L1 */}
+                    {section.directEntries.length > 0 && (
+                      <Table><TableBody>
+                        {section.directEntries.map((entry, idx) => renderEntry(entry, idx, section.directEntries))}
+                      </TableBody></Table>
+                    )}
+
+                    {/* L2 sub-groups */}
+                    {section.subGroups.map((sg) => (
+                      <div key={sg.navItem.slug}>
+                        <div className="flex items-center gap-2 px-4 py-1.5 bg-muted/20 border-t border-b">
+                          <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700">Sub-Cat</Badge>
+                          <span className="text-sm font-medium">{sg.navItem.label}</span>
+                          {sg.pageCount > 0 && (
+                            <span className="ml-auto text-xs text-muted-foreground">
+                              {sg.pageCount} page{sg.pageCount !== 1 ? "s" : ""}
+                            </span>
+                          )}
+                        </div>
+                        <Table><TableBody>
+                          {sg.entries.map((entry, idx) => renderEntry(entry, idx, sg.entries))}
+                        </TableBody></Table>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })
             )}
           </TabsContent>
 
