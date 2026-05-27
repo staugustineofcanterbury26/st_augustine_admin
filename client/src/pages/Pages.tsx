@@ -224,7 +224,7 @@ export default function Pages() {
     for (const l1 of l1Items) {
       const l1Pages = pagesByNavSlug.get(l1.slug) ?? [];
       const l3Direct = (l1.children ?? [])
-        .filter((c) => c.level === 3)
+        .filter((c) => c.level === 3 && c.isActive)
         .sort((a, b) => a.sortOrder - b.sortOrder);
       const l2Children = (l1.children ?? [])
         .filter((c) => c.level === 2)
@@ -234,7 +234,7 @@ export default function Pages() {
 
       const subGroups: NavSubGroup[] = l2Children.map((l2) => {
         const l2Pages = pagesByNavSlug.get(l2.slug) ?? [];
-        const l3Children = (l2.children ?? []).sort((a, b) => a.sortOrder - b.sortOrder);
+        const l3Children = (l2.children ?? []).filter((c) => c.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
         const entries = interleave(l3Children, l2Pages, l2.id, l2.slug);
         return { navItem: l2, entries, pageCount: l2Pages.length };
       });
