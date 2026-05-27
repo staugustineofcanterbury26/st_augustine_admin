@@ -152,6 +152,7 @@ export interface Bulletin {
   fileUrl: string;
   fileSize?: number;
   isPublished: boolean;
+  category: "weekly_bulletin" | "other_document";
   createdAt: string;
 }
 
@@ -161,7 +162,7 @@ export const bulletinsApi = {
     api.post<Bulletin>("/api/bulletins/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
-  update: (id: number, data: Partial<Pick<Bulletin, "title" | "date" | "isPublished">>) =>
+  update: (id: number, data: Partial<Pick<Bulletin, "title" | "date" | "isPublished" | "category">>) =>
     api.put<Bulletin>(`/api/bulletins/${id}`, data),
   delete: (id: number) => api.delete(`/api/bulletins/${id}`),
 };

@@ -25,6 +25,14 @@ import {
 import { bulletinsApi, type Bulletin } from "@/lib/api";
 import { Upload, Trash2, Pencil, FileText, ExternalLink } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Bulletins() {
   const [bulletins, setBulletins] = useState<Bulletin[]>([]);
@@ -32,9 +40,12 @@ export default function Bulletins() {
   const [editingBulletin, setEditingBulletin] = useState<Bulletin | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDate, setEditDate] = useState("");
+  const [editCategory, setEditCategory] = useState<"weekly_bulletin" | "other_document">("weekly_bulletin");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadCategory, setUploadCategory] = useState<"weekly_bulletin" | "other_document">("weekly_bulletin");
+  const [activeTab, setActiveTab] = useState<"weekly_bulletin" | "other_document">("weekly_bulletin");
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -62,6 +73,7 @@ export default function Bulletins() {
     // Default title from filename, date from today
     formData.append("title", file.name.replace(/\.pdf$/i, ""));
     formData.append("date", new Date().toISOString().split("T")[0]);
+    formData.append("category", uploadCategory);
     try {
       const res = await bulletinsApi.upload(formData);
       setBulletins((prev) => [res.data, ...prev]);
@@ -78,6 +90,7 @@ export default function Bulletins() {
     setEditingBulletin(b);
     setEditTitle(b.title);
     setEditDate(b.date);
+    setEditCategory(b.category);
     setEditDialogOpen(true);
   };
 
@@ -99,6 +112,7 @@ export default function Bulletins() {
       const res = await bulletinsApi.update(editingBulletin.id, {
         title: editTitle,
         date: editDate,
+        category: editCategory,
       });
       setBulletins((prev) => prev.map((b) => (b.id === editingBulletin.id ? res.data : b)));
       toast.success("Bulletin updated");
@@ -140,9 +154,23 @@ export default function Bulletins() {
       title="Bulletins & Documents"
       description="Upload and manage Sunday bulletins and parish PDFs."
     >
-      <div className="flex items-center justify-between mb-6">
-        <p className="text-sm text-muted-foreground">{bulletins.length} bulletins uploaded</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <p className="text-sm text-muted-foreground">{bulletins.length} document(s) uploaded</p>
         <div className="flex items-center gap-3">
+          {/* Category selector for upload */}
+          <Select
+            value={uploadCategory}
+            onValueChange={(v) => setUploadCategory(v as "weekly_bulletin" | "other_document")}
+          >
+            <SelectTrigger className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="weekly_bulletin">Weekly Bulletin</SelectItem>
+              <SelectItem value="other_document">Other Document</SelectItem>
+            </SelectContent>
+          </Select>
+
           {uploading && (
             <span className="text-sm text-muted-foreground flex items-center gap-2">
               <span className="h-3 w-3 rounded-full border-2 border-primary border-t-transparent animate-spin" />
@@ -167,14 +195,32 @@ export default function Bulletins() {
         </div>
       </div>
 
+      {/* Category Tabs */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "weekly_bulletin" | "other_document")} className="mb-6">
+        <TabsList>
+          <TabsTrigger value="weekly_bulletin">
+            Weekly Bulletins
+            <Badge variant="secondary" className="ml-2">
+              {bulletins.filter((b) => b.category === "weekly_bulletin").length}
+            </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="other_document">
+            Other Documents
+            <Badge variant="secondary" className="ml-2">
+              {bulletins.filter((b) => b.category === "other_document").length}
+            </Badge>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-12 rounded-lg" />
           ))}
         </div>
-      ) : bulletins.length === 0 ? (
-        <EmptyState onUpload={() => fileInputRef.current?.click()} />
+      ) : bulletins.filter((b) => b.category === activeTab).length === 0 ? (
+        <EmptyState onUpload={() => fileInputRef.current?.click()} category={activeTab} />
       ) : (
         <div className="rounded-xl border bg-card overflow-hidden">
           <Table>
@@ -189,6 +235,7 @@ export default function Bulletins() {
             </TableHeader>
             <TableBody>
               {bulletins
+                .filter((b) => b.category === activeTab)
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                 .map((b) => (
                   <TableRow key={b.id}>
@@ -242,7 +289,7 @@ export default function Bulletins() {
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Bulletin</DialogTitle>
+            <DialogTitle>Edit Document</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
@@ -258,8 +305,23 @@ export default function Bulletins() {
                 max={new Date().toISOString().split("T")[0]}
               />
               <p className="text-xs text-muted-foreground">
-                Bulletins are sorted by date (newest first). Make sure the date matches when it was distributed.
+                Documents are sorted by date (newest first).
               </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Category</Label>
+              <Select
+                value={editCategory}
+                onValueChange={(v) => setEditCategory(v as "weekly_bulletin" | "other_document")}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="weekly_bulletin">Weekly Bulletin</SelectItem>
+                  <SelectItem value="other_document">Other Document</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
@@ -274,16 +336,23 @@ export default function Bulletins() {
   );
 }
 
-function EmptyState({ onUpload }: { onUpload: () => void }) {
+function EmptyState({ onUpload, category }: { onUpload: () => void; category: "weekly_bulletin" | "other_document" }) {
+  const isWeekly = category === "weekly_bulletin";
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <div className="h-16 w-16 rounded-full bg-orange-50 flex items-center justify-center mb-4">
         <FileText className="h-8 w-8 text-primary" />
       </div>
-      <h3 className="font-playfair text-lg font-semibold mb-1">No bulletins yet</h3>
-      <p className="text-sm text-muted-foreground mb-6">Upload Sunday bulletins as PDFs to display them on the public site.</p>
+      <h3 className="font-playfair text-lg font-semibold mb-1">
+        {isWeekly ? "No weekly bulletins yet" : "No other documents yet"}
+      </h3>
+      <p className="text-sm text-muted-foreground mb-6">
+        {isWeekly
+          ? "Upload Sunday bulletins as PDFs to display them on the public site."
+          : "Upload parish documents, forms, and announcements as PDFs."}
+      </p>
       <Button onClick={onUpload} className="bg-primary hover:bg-primary/90 gap-2">
-        <Upload className="h-4 w-4" /> Upload First Bulletin
+        <Upload className="h-4 w-4" /> {isWeekly ? "Upload First Bulletin" : "Upload First Document"}
       </Button>
     </div>
   );
