@@ -158,18 +158,22 @@ export default function NavigationFormDialog({
     return flat;
   }, [mainItems]);
 
-  // Auto-determine level based on parent
+  // Auto-determine level based on parent (only when parent changes, not on initial load)
   const parentIdValue = form.watch("parentId");
+  const [parentChangedByUser, setParentChangedByUser] = useState(false);
   useEffect(() => {
+    if (!parentChangedByUser) return;
     if (parentIdValue) {
       const parent = allFlatItems.find((m) => m.id === parentIdValue);
       if (parent) {
+        // If parent is L1, default to L2 (user can switch to L3 via the level selector)
         form.setValue("level", Math.min(parent.level + 1, 3), { shouldValidate: false });
       }
     } else {
       form.setValue("level", 1, { shouldValidate: false });
     }
-  }, [parentIdValue, allFlatItems, form]);
+    setParentChangedByUser(false);
+  }, [parentChangedByUser, parentIdValue, allFlatItems, form]);
 
   const handleMegaImageUpload = async (file: File) => {
     if (!item?.id) {
@@ -264,10 +268,31 @@ export default function NavigationFormDialog({
             )}
           </div>
 
-          {/* Level indicator */}
-          <div className="p-3 bg-blue-50 rounded text-sm">
-            <strong>Level:</strong> {form.watch("level")} {form.watch("level") === 1 ? "(Main Item)" : form.watch("level") === 2 ? "(Sub-Category)" : "(Child Link)"}
-          </div>
+          {/* Level selector — allows L2 ↔ L3 conversion when parent is L1 */}
+          {form.watch("level") === 1 ? (
+            <div className="p-3 bg-blue-50 rounded text-sm">
+              <strong>Level:</strong> 1 (Main Item)
+            </div>
+          ) : (
+            <div>
+              <Label>Level</Label>
+              <Select
+                value={form.watch("level").toString()}
+                onValueChange={(v) => form.setValue("level", parseInt(v, 10), { shouldValidate: true })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2">2 — Sub-Category</SelectItem>
+                  <SelectItem value="3">3 — Child Link</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500 mt-1">
+                Sub-Categories group child links; Child Links are the actual navigation entries.
+              </p>
+            </div>
+          )}
 
           {/* Link — required for L3, optional for L2 */}
           {(form.watch("level") === 3 || form.watch("level") === 2) && (
@@ -479,6 +504,7 @@ export default function NavigationFormDialog({
             <Select
               value={form.watch("parentId")?.toString() ?? "none"}
               onValueChange={(v) => {
+                setParentChangedByUser(true);
                 if (v === "none") {
                   form.setValue("parentId", undefined);
                 } else {

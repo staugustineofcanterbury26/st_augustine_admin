@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import NavigationFormDialog from "@/components/NavigationForm";
 import { navigationApi, pagesApi, type NavigationItem, type Page } from "@/lib/api";
-import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, Lock } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, Lock, ArrowRightLeft } from "lucide-react";
 
 // ── Recursive Tree Node Component ──────────────────────────────────────────
 
@@ -25,6 +25,7 @@ function TreeNode({
   onEdit,
   onDelete,
   onToggleActive,
+  onConvertLevel,
   isLoading,
 }: {
   item: NavigationItem;
@@ -32,6 +33,7 @@ function TreeNode({
   onEdit: (item: NavigationItem) => void;
   onDelete: (item: NavigationItem) => void;
   onToggleActive: (item: NavigationItem) => Promise<void>;
+  onConvertLevel: (item: NavigationItem) => Promise<void>;
   isLoading: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -105,6 +107,18 @@ function TreeNode({
 
         {/* Actions */}
         <div className="flex gap-1 flex-shrink-0">
+          {(item.level === 2 || item.level === 3) && !item.isSystem && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => onConvertLevel(item)}
+              disabled={isLoading}
+              title={item.level === 2 ? "Convert to Child Link (L3)" : "Convert to Sub-Category (L2)"}
+              className="h-8 w-8 p-0 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+            >
+              <ArrowRightLeft className="w-4 h-4" />
+            </Button>
+          )}
           <Button
             size="sm"
             variant="ghost"
@@ -138,6 +152,7 @@ function TreeNode({
               onEdit={onEdit}
               onDelete={onDelete}
               onToggleActive={onToggleActive}
+              onConvertLevel={onConvertLevel}
               isLoading={isLoading}
             />
           ))}
@@ -239,6 +254,23 @@ export default function Navigation() {
     }
   };
 
+  const handleConvertLevel = async (item: NavigationItem) => {
+    if (item.level !== 2 && item.level !== 3) return;
+    const newLevel = item.level === 2 ? 3 : 2;
+    const label = newLevel === 2 ? "Sub-Category" : "Child Link";
+    setSaving(true);
+    try {
+      await navigationApi.update(item.id, { level: newLevel });
+      toast.success(`Converted "${item.label}" to ${label} (L${newLevel})`);
+      await load();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || "Failed to convert item");
+      console.error(error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Flatten tree for accurate counting
   const flatItems = useMemo(() => {
     const flat: NavigationItem[] = [];
@@ -328,6 +360,7 @@ export default function Navigation() {
                     onEdit={openEdit}
                     onDelete={(item) => setDeleteTarget(item)}
                     onToggleActive={handleToggleActive}
+                    onConvertLevel={handleConvertLevel}
                     isLoading={saving}
                   />
                 ))}
