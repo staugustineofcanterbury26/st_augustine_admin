@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -141,15 +141,117 @@ export default function Pages() {
   const [uploadingBodyImages, setUploadingBodyImages] = useState(false);
   const bodyImagesInputRef = useRef<HTMLInputElement>(null);
 
-  const sortedPages = [...pages].sort((a, b) => {
-    const orderDiff = a.sortOrder - b.sortOrder;
-    if (orderDiff !== 0) return orderDiff;
+  // ── Sorted flat list (used in "All Pages" tab) ────────────────────────────
+  const sortedPages = useMemo(
+    () =>
+      [...pages].sort((a, b) => {
+        const orderDiff = a.sortOrder - b.sortOrder;
+        if (orderDiff !== 0) return orderDiff;
+        const titleDiff = a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+        if (titleDiff !== 0) return titleDiff;
+        return a.id - b.id;
+      }),
+    [pages]
+  );
 
-    const titleDiff = a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
-    if (titleDiff !== 0) return titleDiff;
+  // ── Grouped sections (used in "By Nav Section" tab) ─────────────────────────
+  // Build: ordered nav sections → pages sorted within each section.
+  // Pages not in any nav section (or with showInNav=false) go to "standalone".
+  const groupedSections = useMemo(() => {
+    // Map each page's navPosition slug → sorted page list
+    const pagesBySlug = new Map<string, Page[]>();
+    for (const page of pages) {
+      const bucket = !page.showInNav || !page.navPosition || page.navPosition === "none"
+        ? "__standalone__"
+        : page.navPosition;
+      const list = pagesBySlug.get(bucket) ?? [];
+      list.push(page);
+      pagesBySlug.set(bucket, list);
+    }
+    // Sort pages within each bucket by sortOrder then title
+    const sortBucket = (list: Page[]) =>
+      list.sort((a, b) => {
+        const od = a.sortOrder - b.sortOrder;
+        if (od !== 0) return od;
+        return a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+      });
+    for (const [slug, list] of Array.from(pagesBySlug)) {
+      pagesBySlug.set(slug, sortBucket(list));
+    }
 
-    return a.id - b.id;
-  });
+    // Flatten L1+L2 nav items in their sortOrder to drive section header order
+    const flatNav: NavigationItem[] = [];
+    const walk = (items: NavigationItem[]) => {
+      const sorted = [...items].sort((a, b) => a.sortOrder - b.sortOrder);
+      for (const item of sorted) {
+        if (item.level <= 2) flatNav.push(item);
+        if (item.children?.length) walk(item.children);
+      }
+    };
+    walk(navItems);
+
+    // Build ordered sections, only including ones that actually have pages
+    const sections: { slug: string; label: string; level: number; pages: Page[] }[] = [];
+    for (const item of flatNav) {
+      const list = pagesBySlug.get(item.slug);
+      if (list && list.length > 0) {
+        sections.push({ slug: item.slug, label: item.label, level: item.level, pages: list });
+      }
+    }
+
+    // Standalone bucket always last
+    const standalone = pagesBySlug.get("__standalone__") ?? [];
+    if (standalone.length > 0) {
+      sections.push({
+        slug: "__standalone__",
+        label: "Standalone",
+        level: 0,
+        pages: sortBucket(standalone),
+      });
+    }
+
+    return sections;
+  }, [pages, navItems]);
+
+  // ── Move a page up/down within its nav section ──────────────────────────────
+  const handleMovePageInSection = async (
+    sectionSlug: string,
+    pageIndex: number,
+    direction: "up" | "down"
+  ) => {
+    const section = groupedSections.find((s) => s.slug === sectionSlug);
+    if (!section) return;
+    const list = [...section.pages];
+    const swapIndex = direction === "up" ? pageIndex - 1 : pageIndex + 1;
+    if (swapIndex < 0 || swapIndex >= list.length) return;
+
+    // Determine new sort orders: swap the values
+    const aPage = list[pageIndex];
+    const bPage = list[swapIndex];
+    const aNewOrder = bPage.sortOrder !== aPage.sortOrder
+      ? bPage.sortOrder
+      : direction === "up" ? aPage.sortOrder - 1 : aPage.sortOrder + 1;
+    const bNewOrder = aPage.sortOrder;
+
+    // Optimistic local update
+    setPages((prev) =>
+      prev.map((p) => {
+        if (p.id === aPage.id) return { ...p, sortOrder: aNewOrder };
+        if (p.id === bPage.id) return { ...p, sortOrder: bNewOrder };
+        return p;
+      })
+    );
+
+    try {
+      await Promise.all([
+        pagesApi.update(aPage.id, { sortOrder: aNewOrder }),
+        pagesApi.update(bPage.id, { sortOrder: bNewOrder }),
+      ]);
+    } catch {
+      toast.error("Failed to reorder pages");
+      load(); // revert on failure
+    }
+  };
 
   const form = useForm<PageForm>({
     resolver: zodResolver(pageSchema) as any,
@@ -622,7 +724,7 @@ export default function Pages() {
       description="Create and manage custom pages that appear on the public website."
     >
       {/* Header row */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-muted-foreground">
           {pages.length} page{pages.length !== 1 ? "s" : ""}
           {" · "}
@@ -634,12 +736,13 @@ export default function Pages() {
         </Button>
       </div>
 
-      {/* Table */}
+      {/* Loading skeleton */}
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((n) => <Skeleton key={n} className="h-12 w-full" />)}
         </div>
       ) : pages.length === 0 ? (
+        /* Empty state */
         <div className="rounded-lg border border-dashed p-12 text-center">
           <Globe className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
           <p className="font-playfair text-lg font-semibold text-foreground mb-1">No pages yet</p>
@@ -653,101 +756,245 @@ export default function Pages() {
           </Button>
         </div>
       ) : (
-        <div className="rounded-lg border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Slug</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Nav</TableHead>
-                <TableHead>Updated</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedPages.map((page) => (
-                <TableRow key={page.id}>
-                  <TableCell className="font-medium">{page.title}</TableCell>
-                  <TableCell>
-                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
-                      /pages/{page.slug}
-                    </code>
-                  </TableCell>
-                  <TableCell>
-                    <button onClick={() => handlePublishToggle(page)}>
-                      {page.isPublished ? (
-                        <Badge className="bg-green-100 text-green-700 hover:bg-green-200 cursor-pointer gap-1">
-                          <Globe className="h-3 w-3" /> Published
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-muted-foreground cursor-pointer gap-1">
-                          <EyeOff className="h-3 w-3" /> Draft
-                        </Badge>
-                      )}
-                    </button>
-                  </TableCell>
-                  <TableCell>
-                    {page.showInNav ? (
-                      <span className="text-xs text-green-700 font-medium">
-                        {page.navLabel || page.title}
-                        {page.navPosition && page.navPosition !== "none" && (
-                          <span className="ml-1 text-muted-foreground font-normal">
-                            ({flattenNavOptions(navItems).find((o) => o.value === page.navPosition)?.label ?? page.navPosition})
-                          </span>
-                        )}
-                      </span>
+        /* Tabbed view */
+        <Tabs defaultValue="by-nav">
+          <TabsList className="mb-4">
+            <TabsTrigger value="by-nav">By Nav Section</TabsTrigger>
+            <TabsTrigger value="all">All Pages</TabsTrigger>
+          </TabsList>
+
+          {/* ── BY NAV SECTION tab ─────────────────────────────────────── */}
+          <TabsContent value="by-nav" className="space-y-4">
+            {groupedSections.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                No pages are linked to navigation sections yet. Edit a page and set its Nav Position.
+              </p>
+            ) : (
+              groupedSections.map((section) => (
+                <div key={section.slug} className="rounded-lg border overflow-hidden">
+                  {/* Section header */}
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/40 border-b">
+                    {section.slug === "__standalone__" ? (
+                      <Badge variant="outline" className="text-xs text-muted-foreground">Standalone</Badge>
+                    ) : section.level === 1 ? (
+                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">Main</Badge>
                     ) : (
-                      <span className="text-xs text-muted-foreground">–</span>
+                      <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700">Sub-Cat</Badge>
                     )}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {formatDateTime(page.updatedAt)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Preview page"
-                        onClick={async () => {
-                          try {
-                            const res = await pagesApi.getPreviewToken(page.slug);
-                            const token = res.data.previewToken;
-                            const url = `${frontendBase}/pages/${page.slug}?previewToken=${encodeURIComponent(
-                              token
-                            )}`;
-                            window.open(url, "_blank", "noopener,noreferrer");
-                          } catch {
-                            toast.error("Failed to get preview token");
-                          }
-                        }}
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEdit(page)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => { setDeleteTarget(page); setDeleteConfirmText(""); }}
-                        disabled={deletingId === page.id}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+                    <span className="font-medium text-sm">{section.label}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {section.pages.length} page{section.pages.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+
+                  {/* Pages in this section */}
+                  <Table>
+                    <TableBody>
+                      {section.pages.map((page, idx) => (
+                        <TableRow key={page.id}>
+                          {/* Sort order controls */}
+                          <TableCell className="w-16 pr-0">
+                            <div className="flex flex-col items-center gap-0.5">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5"
+                                disabled={idx === 0}
+                                onClick={() => handleMovePageInSection(section.slug, idx, "up")}
+                              >
+                                <ChevronUp className="h-3 w-3" />
+                              </Button>
+                              <span className="text-[10px] text-muted-foreground tabular-nums">
+                                {page.sortOrder}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5"
+                                disabled={idx === section.pages.length - 1}
+                                onClick={() => handleMovePageInSection(section.slug, idx, "down")}
+                              >
+                                <ChevronDown className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </TableCell>
+
+                          {/* Title */}
+                          <TableCell className="font-medium">
+                            {page.navLabel && page.navLabel !== page.title ? (
+                              <>
+                                <span>{page.navLabel}</span>
+                                <span className="ml-1.5 text-xs text-muted-foreground font-normal">({page.title})</span>
+                              </>
+                            ) : (
+                              page.title
+                            )}
+                          </TableCell>
+
+                          {/* Slug */}
+                          <TableCell className="hidden sm:table-cell">
+                            <code className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                              /pages/{page.slug}
+                            </code>
+                          </TableCell>
+
+                          {/* Status */}
+                          <TableCell>
+                            <button onClick={() => handlePublishToggle(page)}>
+                              {page.isPublished ? (
+                                <Badge className="bg-green-100 text-green-700 hover:bg-green-200 cursor-pointer gap-1">
+                                  <Globe className="h-3 w-3" /> Published
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-muted-foreground cursor-pointer gap-1">
+                                  <EyeOff className="h-3 w-3" /> Draft
+                                </Badge>
+                              )}
+                            </button>
+                          </TableCell>
+
+                          {/* Actions */}
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Preview page"
+                                onClick={async () => {
+                                  try {
+                                    const res = await pagesApi.getPreviewToken(page.slug);
+                                    const token = res.data.previewToken;
+                                    const url = `${frontendBase}/pages/${page.slug}?previewToken=${encodeURIComponent(token)}`;
+                                    window.open(url, "_blank", "noopener,noreferrer");
+                                  } catch {
+                                    toast.error("Failed to get preview token");
+                                  }
+                                }}
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => openEdit(page)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => { setDeleteTarget(page); setDeleteConfirmText(""); }}
+                                disabled={deletingId === page.id}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ))
+            )}
+          </TabsContent>
+
+          {/* ── ALL PAGES tab ──────────────────────────────────────────── */}
+          <TabsContent value="all">
+            <div className="rounded-lg border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Slug</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Nav</TableHead>
+                    <TableHead>Updated</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedPages.map((page) => (
+                    <TableRow key={page.id}>
+                      <TableCell className="font-medium">{page.title}</TableCell>
+                      <TableCell>
+                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                          /pages/{page.slug}
+                        </code>
+                      </TableCell>
+                      <TableCell>
+                        <button onClick={() => handlePublishToggle(page)}>
+                          {page.isPublished ? (
+                            <Badge className="bg-green-100 text-green-700 hover:bg-green-200 cursor-pointer gap-1">
+                              <Globe className="h-3 w-3" /> Published
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-muted-foreground cursor-pointer gap-1">
+                              <EyeOff className="h-3 w-3" /> Draft
+                            </Badge>
+                          )}
+                        </button>
+                      </TableCell>
+                      <TableCell>
+                        {page.showInNav ? (
+                          <span className="text-xs text-green-700 font-medium">
+                            {page.navLabel || page.title}
+                            {page.navPosition && page.navPosition !== "none" && (
+                              <span className="ml-1 text-muted-foreground font-normal">
+                                ({flattenNavOptions(navItems).find((o) => o.value === page.navPosition)?.label ?? page.navPosition})
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">–</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDateTime(page.updatedAt)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Preview page"
+                            onClick={async () => {
+                              try {
+                                const res = await pagesApi.getPreviewToken(page.slug);
+                                const token = res.data.previewToken;
+                                const url = `${frontendBase}/pages/${page.slug}?previewToken=${encodeURIComponent(
+                                  token
+                                )}`;
+                                window.open(url, "_blank", "noopener,noreferrer");
+                              } catch {
+                                toast.error("Failed to get preview token");
+                              }
+                            }}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEdit(page)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => { setDeleteTarget(page); setDeleteConfirmText(""); }}
+                            disabled={deletingId === page.id}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+        </Tabs>
       )}
 
       {/* Delete Confirmation Dialog */}
