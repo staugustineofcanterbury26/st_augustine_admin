@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { parishInfoApi, type ParishInfo } from "@/lib/api";
-import { Church, MapPin, Phone, Mail, Clock, Globe } from "lucide-react";
+import { Church, MapPin, Phone, Mail, Clock, Globe, Heart } from "lucide-react";
 
 const schema = z.object({
   parishName: z.string().min(1),
@@ -25,6 +25,7 @@ const schema = z.object({
   facebookUrl: z.union([z.literal(""), z.string().url()]).nullish().transform(val => (val && val.length > 0 ? val : null)),
   youtubeUrl: z.union([z.literal(""), z.string().url()]).nullish().transform(val => (val && val.length > 0 ? val : null)),
   instagramUrl: z.union([z.literal(""), z.string().url()]).nullish().transform(val => (val && val.length > 0 ? val : null)),
+  donationUrl: z.union([z.literal(""), z.string().url()]).nullish().transform(val => (val && val.length > 0 ? val : null)),
   missionStatement: z.string().min(1),
   welcomeMessage: z.string().min(1),
   missionTagline: z.string().min(1),
@@ -51,6 +52,7 @@ export default function ParishInfo() {
       facebookUrl: "",
       youtubeUrl: "",
       instagramUrl: "",
+      donationUrl: "",
       missionStatement: "",
       welcomeMessage: "",
       missionTagline: "",
@@ -74,6 +76,7 @@ export default function ParishInfo() {
           facebookUrl: res.data.facebookUrl ?? "",
           youtubeUrl: res.data.youtubeUrl ?? "",
           instagramUrl: res.data.instagramUrl ?? "",
+          donationUrl: res.data.donationUrl ?? "",
           missionStatement: res.data.missionStatement,
           welcomeMessage: res.data.welcomeMessage,
           missionTagline: res.data.missionTagline,
@@ -92,6 +95,7 @@ export default function ParishInfo() {
         facebookUrl: data.facebookUrl || undefined,
         youtubeUrl: data.youtubeUrl || undefined,
         instagramUrl: data.instagramUrl || undefined,
+        donationUrl: data.donationUrl || undefined,
       });
       toast.success("Parish info saved");
     } catch {
@@ -250,6 +254,26 @@ export default function ParishInfo() {
               <Input placeholder="https://instagram.com/…" {...form.register("instagramUrl")} />
               {form.formState.errors.instagramUrl && (
                 <p className="text-xs text-destructive">{form.formState.errors.instagramUrl.message}</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Donation */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Heart className="h-4 w-4 text-primary" />
+              Donation Button
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Donation URL</Label>
+              <p className="text-xs text-muted-foreground">The destination link for the "Donate Now" button in the navigation bar. Leave empty to hide the button.</p>
+              <Input placeholder="https://example.com/donate" {...form.register("donationUrl")} />
+              {form.formState.errors.donationUrl && (
+                <p className="text-xs text-destructive">{form.formState.errors.donationUrl.message}</p>
               )}
             </div>
           </CardContent>
