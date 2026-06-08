@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useForm, type Resolver } from "react-hook-form";
+import { useForm, Controller, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { parishInfoApi, type ParishInfo } from "@/lib/api";
@@ -26,6 +27,8 @@ const schema = z.object({
   youtubeUrl: z.union([z.literal(""), z.string().url()]).nullish().transform(val => (val && val.length > 0 ? val : null)),
   instagramUrl: z.union([z.literal(""), z.string().url()]).nullish().transform(val => (val && val.length > 0 ? val : null)),
   donationUrl: z.union([z.literal(""), z.string().url()]).nullish().transform(val => (val && val.length > 0 ? val : null)),
+  donationButtonText: z.string().min(1).max(50),
+  donationOpenNewTab: z.boolean(),
   missionStatement: z.string().min(1),
   welcomeMessage: z.string().min(1),
   missionTagline: z.string().min(1),
@@ -53,6 +56,8 @@ export default function ParishInfo() {
       youtubeUrl: "",
       instagramUrl: "",
       donationUrl: "",
+      donationButtonText: "Donate Now",
+      donationOpenNewTab: true,
       missionStatement: "",
       welcomeMessage: "",
       missionTagline: "",
@@ -77,6 +82,8 @@ export default function ParishInfo() {
           youtubeUrl: res.data.youtubeUrl ?? "",
           instagramUrl: res.data.instagramUrl ?? "",
           donationUrl: res.data.donationUrl ?? "",
+          donationButtonText: res.data.donationButtonText,
+          donationOpenNewTab: res.data.donationOpenNewTab,
           missionStatement: res.data.missionStatement,
           welcomeMessage: res.data.welcomeMessage,
           missionTagline: res.data.missionTagline,
@@ -96,6 +103,8 @@ export default function ParishInfo() {
         youtubeUrl: data.youtubeUrl || undefined,
         instagramUrl: data.instagramUrl || undefined,
         donationUrl: data.donationUrl || undefined,
+        donationButtonText: data.donationButtonText,
+        donationOpenNewTab: data.donationOpenNewTab,
       });
       toast.success("Parish info saved");
     } catch {
@@ -270,11 +279,31 @@ export default function ParishInfo() {
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
               <Label>Donation URL</Label>
-              <p className="text-xs text-muted-foreground">The destination link for the "Donate Now" button in the navigation bar. Leave empty to hide the button.</p>
+              <p className="text-xs text-muted-foreground">The destination link for the donation button in the navigation bar. Leave empty to hide the button.</p>
               <Input placeholder="https://example.com/donate" {...form.register("donationUrl")} />
               {form.formState.errors.donationUrl && (
                 <p className="text-xs text-destructive">{form.formState.errors.donationUrl.message}</p>
               )}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Button Text</Label>
+              <Input placeholder="Donate Now" {...form.register("donationButtonText")} />
+              {form.formState.errors.donationButtonText && (
+                <p className="text-xs text-destructive">{form.formState.errors.donationButtonText.message}</p>
+              )}
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Open in new tab</Label>
+                <p className="text-xs text-muted-foreground">When enabled, the link opens in a new browser tab.</p>
+              </div>
+              <Controller
+                control={form.control}
+                name="donationOpenNewTab"
+                render={({ field }) => (
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                )}
+              />
             </div>
           </CardContent>
         </Card>

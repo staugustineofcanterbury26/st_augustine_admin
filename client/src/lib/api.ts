@@ -183,6 +183,8 @@ export interface ParishInfo {
   youtubeUrl?: string;
   instagramUrl?: string;
   donationUrl?: string;
+  donationButtonText: string;
+  donationOpenNewTab: boolean;
   missionStatement: string;
   welcomeMessage: string;
   missionTagline: string;
