@@ -375,6 +375,7 @@ export interface Page {
   bodyImageUrl: string | null;
   bodyImageCaption: string | null;
   bodyImageTemplate: "single" | "grid" | "sequential" | "carousel";
+  gridColumns: number;
   imageShape: "circle" | "square" | "rounded";
   imageSize: "small" | "medium" | "large";
   isPublished: boolean;
@@ -386,11 +387,12 @@ export interface Page {
   updatedAt: string;
 }
 
-export type PageInput = Omit<Page, "id" | "createdAt" | "updatedAt" | "imageUrl" | "bodyImageUrl" | "bodyImageCaption" | "bodyImageTemplate"> & {
+export type PageInput = Omit<Page, "id" | "createdAt" | "updatedAt" | "imageUrl" | "bodyImageUrl" | "bodyImageCaption" | "bodyImageTemplate" | "gridColumns"> & {
   imageUrl?: string | null;
   bodyImageUrl?: string | null;
   bodyImageCaption?: string | null;
   bodyImageTemplate?: "single" | "grid" | "sequential" | "carousel";
+  gridColumns?: number;
   imageShape?: "circle" | "square" | "rounded";
   imageSize?: "small" | "medium" | "large";
 };

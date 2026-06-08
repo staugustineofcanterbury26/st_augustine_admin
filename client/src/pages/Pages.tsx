@@ -58,6 +58,7 @@ const pageSchema = z.object({
   ogImage: z.union([z.literal(""), z.string().url()]).nullish().transform(val => (val && val.length > 0 ? val : null)),
   robots: z.string().nullish().transform(val => val || undefined),
   bodyImageTemplate: z.enum(["single", "grid", "sequential", "carousel"]).default("single"),
+  gridColumns: z.coerce.number().int().min(1).max(4).default(3),
   imageShape: z.enum(["circle", "square", "rounded"]).default("circle"),
   imageSize: z.enum(["small", "medium", "large"]).default("medium"),
   isPublished: z.boolean(),
@@ -83,6 +84,7 @@ function formDefault(page?: Page): PageForm {
     ogImage: page?.ogImage ?? null,
     robots: page?.robots ?? "index,follow",
     bodyImageTemplate: (page?.bodyImageTemplate ?? "single") as any,
+    gridColumns: page?.gridColumns ?? 3,
     imageShape: (page?.imageShape ?? "circle") as any,
     imageSize: (page?.imageSize ?? "medium") as any,
     isPublished: page?.isPublished ?? false,
@@ -1172,13 +1174,13 @@ export default function Pages() {
               <p className="text-xs text-muted-foreground">
                 {bodyImageTemplate === "single" && "📷 Classic layout — one image beside your text content"}
                 {bodyImageTemplate === "sequential" && "📚 Cards stacked vertically — image + name + role + description per card (like a team/bio page)"}
-                {bodyImageTemplate === "grid" && "🎨 Cards in a 3-column grid — image + name + role + description per card (like a team directory)"}
+                {bodyImageTemplate === "grid" && "🎨 Cards in a configurable grid (1–4 columns) — image + name + role + description per card"}
                 {bodyImageTemplate === "carousel" && "🎠 Swipeable card slider — image + name + role + description per card"}
               </p>
 
               {/* Image Shape & Size — only for multi-image templates */}
               {bodyImageTemplate !== "single" && (
-                <div className="grid grid-cols-2 gap-4 pt-3 border-t mt-3">
+                <div className="grid grid-cols-3 gap-4 pt-3 border-t mt-3">
                   <div className="space-y-1.5">
                     <Label className="text-sm">Image Shape</Label>
                     <select
@@ -1201,6 +1203,20 @@ export default function Pages() {
                       <option value="large">Large (224px)</option>
                     </select>
                   </div>
+                  {bodyImageTemplate === "grid" && (
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Grid Columns</Label>
+                      <select
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        {...form.register("gridColumns")}
+                      >
+                        <option value="1">1 Column</option>
+                        <option value="2">2 Columns</option>
+                        <option value="3">3 Columns</option>
+                        <option value="4">4 Columns</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
