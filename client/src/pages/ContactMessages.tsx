@@ -381,7 +381,7 @@ export default function ContactMessages() {
                   {/* Quick Reply */}
                   <div className="mt-8 pt-6 border-t">
                     <a
-                      href={`mailto:${encodeURIComponent(selectedMessage.email)}?subject=Re: ${encodeURIComponent(selectedMessage.subject)}`}
+                      href={`mailto:${encodeURIComponent(selectedMessage.email)}?subject=Re: ${encodeURIComponent(selectedMessage.subject)}&body=${encodeURIComponent(`\n\n\n--- Original Message ---\nFrom: ${selectedMessage.name} <${selectedMessage.email}>\nDate: ${new Date(selectedMessage.createdAt).toLocaleString()}\nSubject: ${selectedMessage.subject}\n\n${selectedMessage.message}`)}`}
                       className="inline-flex"
                     >
                       <Button variant="outline" size="sm">

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUnreadMessagesNotification } from "@/hooks/useUnreadMessagesNotification";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -10,6 +11,9 @@ interface ProtectedRouteProps {
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading } = useAuth();
   const [, setLocation] = useLocation();
+
+  // Show notification for unread contact messages on login
+  useUnreadMessagesNotification();
 
   // TODO: remove DEV_BYPASS when backend auth is wired up
   const DEV_BYPASS = import.meta.env.DEV;
