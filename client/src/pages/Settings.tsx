@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAuth } from "@/contexts/AuthContext";
 import { authApi } from "@/lib/api";
 import { KeyRound, User } from "lucide-react";
+import TwoFactorReminder from "@/components/TwoFactorReminder";
 
 const passwordSchema = z
   .object({
@@ -50,6 +51,7 @@ export default function Settings() {
   return (
     <AdminLayout title="Account Settings" description="Manage your admin account credentials.">
       <div className="max-w-xl space-y-6">
+        <TwoFactorReminder className="mb-4" />
         {/* Profile details */}
         <Card>
           <CardHeader>

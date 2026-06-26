@@ -2,14 +2,16 @@ import React, { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
+import TwoFactorReminder from "@/components/TwoFactorReminder";
 
 interface AdminLayoutProps {
   title: string;
   description?: string;
   children: React.ReactNode;
+  showSecurityReminder?: boolean;
 }
 
-export default function AdminLayout({ title, description, children }: AdminLayoutProps) {
+export default function AdminLayout({ title, description, children, showSecurityReminder = true }: AdminLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [location] = useLocation();
@@ -63,6 +65,7 @@ export default function AdminLayout({ title, description, children }: AdminLayou
         <TopBar title={title} description={description} onOpenSidebar={() => setIsSidebarOpen(true)} />
         <div className="flex-1 overflow-y-auto">
           <div className="p-6 max-w-full">
+            {showSecurityReminder && <TwoFactorReminder className="mb-6" />}
             {children}
           </div>
         </div>
