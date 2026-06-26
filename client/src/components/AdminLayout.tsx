@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import TwoFactorReminder from "@/components/TwoFactorReminder";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AdminLayoutProps {
   title: string;
@@ -15,6 +16,7 @@ export default function AdminLayout({ title, description, children, showSecurity
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [location] = useLocation();
+  const { user, isLoading } = useAuth();
 
   useEffect(() => {
     // Lock body scroll when mobile drawer is open
@@ -65,7 +67,7 @@ export default function AdminLayout({ title, description, children, showSecurity
         <TopBar title={title} description={description} onOpenSidebar={() => setIsSidebarOpen(true)} />
         <div className="flex-1 overflow-y-auto">
           <div className="p-6 max-w-full">
-            {showSecurityReminder && <TwoFactorReminder className="mb-6" />}
+            {showSecurityReminder && !isLoading && !user?.twoFactorEnabled && <TwoFactorReminder className="mb-6" />}
             {children}
           </div>
         </div>

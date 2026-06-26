@@ -15,6 +15,7 @@ import TwoFactorReminder from "@/components/TwoFactorReminder";
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  totpCode: z.string().optional(),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -39,10 +40,12 @@ export default function Login() {
   const onSubmit = async (data: LoginForm) => {
     setIsSubmitting(true);
     try {
-      await login(data.email, data.password);
+      await login(data.email, data.password, data.totpCode);
       setLocation("/");
-    } catch {
-      toast.error("Invalid email or password. Please try again.");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Invalid email or password. Please try again.";
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -117,6 +120,17 @@ export default function Login() {
                 )}
               </div>
 
+              <div className="space-y-1.5">
+                <Label htmlFor="totpCode">2FA Code (if enabled)</Label>
+                <Input
+                  id="totpCode"
+                  type="text"
+                  placeholder="123456"
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  {...register("totpCode")}
+                />
+              </div>
               <Button
                 type="submit"
                 className="w-full mt-2 bg-primary hover:bg-primary/90"

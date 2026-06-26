@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, KeyRound, ExternalLink, Menu, Mail } from "lucide-react";
+import { LogOut, User, Settings, ExternalLink, Menu, Mail } from "lucide-react";
 import { Link } from "wouter";
 import { contactMessagesApi } from "@/lib/api";
 
@@ -100,8 +100,8 @@ export default function TopBar({ title, description, onOpenSidebar }: TopBarProp
             <DropdownMenuSeparator />
             <Link href="/settings">
               <DropdownMenuItem className="cursor-pointer gap-2">
-                <KeyRound className="h-4 w-4" />
-                Change Password
+                <Settings className="h-4 w-4" />
+                Account Settings
               </DropdownMenuItem>
             </Link>
             <DropdownMenuSeparator />

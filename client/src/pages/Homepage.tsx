@@ -47,8 +47,8 @@ const sectionSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string(),
   linkTarget: z.string().min(1, "Link target is required"),
-  imageUrl: z.string().nullable().optional(),
-  imageColor: z.string().nullable().optional(),
+  imageUrl: z.string().nullable(),
+  imageColor: z.string().nullable(),
   isActive: z.boolean(),
   sortOrder: z.number(),
 });

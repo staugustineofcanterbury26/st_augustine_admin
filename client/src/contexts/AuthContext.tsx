@@ -9,8 +9,9 @@ interface AuthState {
 }
 
 interface AuthContextValue extends AuthState {
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, totpCode?: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateUser: (updates: Partial<AdminUser>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -42,8 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await authApi.login(email, password);
+  const login = useCallback(async (email: string, password: string, totpCode?: string) => {
+    const res = await authApi.login(email, password, totpCode);
     const { token, user } = res.data;
     localStorage.setItem("admin_token", token);
     setState({ user, token, isLoading: false, isAuthenticated: true });
@@ -59,8 +60,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState({ user: null, token: null, isLoading: false, isAuthenticated: false });
   }, []);
 
+  const updateUser = useCallback((updates: Partial<AdminUser>) => {
+    setState((current) => ({
+      ...current,
+      user: current.user ? { ...current.user, ...updates } : current.user,
+    }));
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ ...state, login, logout }}>
+    <AuthContext.Provider value={{ ...state, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

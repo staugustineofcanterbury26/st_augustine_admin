@@ -6,19 +6,17 @@ interface TwoFactorReminderProps {
   className?: string;
   title?: string;
   description?: string;
-  bullets?: string[];
+  linkHref?: string;
+  linkLabel?: string;
 }
 
 export default function TwoFactorReminder({
   className,
   title = "Protect your admin account",
   description =
-    "Two-factor authentication (2FA) is strongly recommended for admin users. It is not required to sign in yet, but enabling it adds an extra layer of protection.",
-  bullets = [
-    "Use a mobile authenticator app such as Google Authenticator, Authy, or Microsoft Authenticator.",
-    "Enable 2FA in your identity provider or account security settings when available.",
-    "Save recovery codes securely so you can still sign in if you lose your device.",
-  ],
+    "Two-factor authentication is strongly recommended. Enable 2FA in account settings to add a second verification step and keep your admin access secure.",
+  linkHref = "/settings#twoFactorAuthentication",
+  linkLabel = "Go to 2FA settings",
 }: TwoFactorReminderProps) {
   return (
     <Card className={cn("border-amber-200 bg-amber-50 text-amber-950 shadow-none", className)}>
@@ -30,11 +28,9 @@ export default function TwoFactorReminder({
           <div>
             <p className="text-sm font-semibold text-amber-900">{title}</p>
             <p className="mt-1 text-sm leading-6 text-amber-900/85">{description}</p>
-            <ul className="mt-3 space-y-2 text-sm leading-6 text-amber-900/85 list-disc list-inside">
-              {bullets.map((bullet) => (
-                <li key={bullet}>{bullet}</li>
-              ))}
-            </ul>
+            <a href={linkHref} className="mt-3 inline-flex text-sm font-semibold text-primary hover:text-primary/80">
+              {linkLabel}
+            </a>
           </div>
         </div>
       </CardContent>

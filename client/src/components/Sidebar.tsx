@@ -18,7 +18,6 @@ import {
   HandHeart,
   Building2,
   BookOpen,
-  Settings,
   Mail,
   ChevronRight,
   ChevronLeft,
@@ -69,7 +68,6 @@ const navGroups = [
     label: "Settings",
     items: [
       { href: "/parish-info", label: "Parish Info", icon: Church },
-      { href: "/settings", label: "Account", icon: Settings },
       { href: "/navigation", label: "Navigation", icon: MenuIcon },
     ],
   },

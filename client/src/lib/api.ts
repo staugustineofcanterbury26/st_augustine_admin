@@ -36,6 +36,7 @@ export interface AdminUser {
   email: string;
   name: string;
   role: "admin" | "editor";
+  twoFactorEnabled?: boolean;
 }
 
 export interface LoginResponse {
@@ -44,12 +45,16 @@ export interface LoginResponse {
 }
 
 export const authApi = {
-  login: (email: string, password: string) =>
-    api.post<LoginResponse>("/api/auth/login", { email, password }),
+  login: (email: string, password: string, totpCode?: string) =>
+    api.post<LoginResponse>("/api/auth/login", { email, password, totpCode }),
   logout: () => api.post("/api/auth/logout"),
   me: () => api.get<AdminUser>("/api/auth/me"),
   changePassword: (currentPassword: string, newPassword: string) =>
     api.post("/api/auth/change-password", { currentPassword, newPassword }),
+  get2FAStatus: () => api.get<{ enabled: boolean; hasSecret: boolean }>("/api/auth/2fa/status"),
+  setup2FA: () => api.post<{ secret: string; otpauthUrl: string }>("/api/auth/2fa/setup"),
+  verify2FA: (totpCode: string) => api.post("/api/auth/2fa/verify", { totpCode }),
+  disable2FA: (totpCode: string) => api.post("/api/auth/2fa/disable", { totpCode }),
 };
 
 // ── Mass Times ────────────────────────────────────────────────────────────────
