@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lock, Mail } from "lucide-react";
-import TwoFactorReminder from "@/components/TwoFactorReminder";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email address"),
@@ -82,7 +81,6 @@ export default function Login() {
             <CardDescription>Enter your administrator credentials to continue</CardDescription>
           </CardHeader>
           <CardContent>
-            <TwoFactorReminder className="mb-4" />
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email Address</Label>

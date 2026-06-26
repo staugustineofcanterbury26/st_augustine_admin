@@ -1,12 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Ensure full viewport height without extra scrolling */
+/* Ensure full viewport height with proper scrolling */
 html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden;
+  overflow: auto;
 }
 
 #root {
