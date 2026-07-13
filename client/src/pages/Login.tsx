@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import axios from "axios";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,11 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lock, Mail } from "lucide-react";
+import TwoFactorReminder from "@/components/TwoFactorReminder";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  totpCode: z.string().optional(),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -23,6 +24,10 @@ export default function Login() {
   const { login, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [pendingPassword, setPendingPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
 
   const {
     register,
@@ -36,14 +41,49 @@ export default function Login() {
     return null;
   }
 
-  const onSubmit = async (data: LoginForm) => {
+  const onCredentialsSubmit = async (data: LoginForm) => {
     setIsSubmitting(true);
     try {
-      await login(data.email, data.password, data.totpCode);
+      await login(data.email, data.password);
+      setLocation("/");
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.data?.errorCode === "TWO_FACTOR_REQUIRED") {
+        setPendingEmail(data.email);
+        setPendingPassword(data.password);
+        setTotpCode("");
+        setRequiresTwoFactor(true);
+        toast.info("Enter your 2FA code to complete sign-in.");
+      } else {
+        const message =
+          axios.isAxiosError(error)
+            ? (error.response?.data?.error ?? error.message)
+            : error instanceof Error
+              ? error.message
+              : "Invalid email or password. Please try again.";
+        toast.error(message);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const onTwoFactorSubmit = async () => {
+    if (!totpCode.trim()) {
+      toast.error("Enter the 6-digit code from your authenticator app.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await login(pendingEmail, pendingPassword, totpCode.trim());
       setLocation("/");
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Invalid email or password. Please try again.";
+        axios.isAxiosError(error)
+          ? (error.response?.data?.error ?? error.message)
+          : error instanceof Error
+            ? error.message
+            : "Unable to verify the authentication code. Please try again.";
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -77,73 +117,115 @@ export default function Login() {
 
         <Card className="shadow-xl border-0">
           <CardHeader className="pb-4">
-            <CardTitle className="text-lg font-semibold">Sign In</CardTitle>
-            <CardDescription>Enter your administrator credentials to continue</CardDescription>
+            <CardTitle className="text-lg font-semibold">
+              {requiresTwoFactor ? "Two-Factor Verification" : "Sign In"}
+            </CardTitle>
+            <CardDescription>
+              {requiresTwoFactor
+                ? "Enter the 6-digit code from your authenticator app to complete sign-in."
+                : "Enter your administrator credentials to continue"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email Address</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="admin@staugustine.ca"
-                    className="pl-9"
-                    autoComplete="email"
-                    {...register("email")}
-                  />
-                </div>
-                {errors.email && (
-                  <p className="text-xs text-destructive">{errors.email.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    className="pl-9"
-                    autoComplete="current-password"
-                    {...register("password")}
-                  />
-                </div>
-                {errors.password && (
-                  <p className="text-xs text-destructive">{errors.password.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="totpCode">2FA Code (if enabled)</Label>
-                <Input
-                  id="totpCode"
-                  type="text"
-                  placeholder="123456"
-                  autoComplete="one-time-code"
-                  inputMode="numeric"
-                  {...register("totpCode")}
-                />
-              </div>
-              <Button
-                type="submit"
-                className="w-full mt-2 bg-primary hover:bg-primary/90"
-                disabled={isSubmitting}
+            <TwoFactorReminder className="mb-4" />
+            {requiresTwoFactor ? (
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void onTwoFactorSubmit();
+                }}
+                className="space-y-4"
+                noValidate
               >
-                {isSubmitting ? (
-                  <span className="flex items-center gap-2">
-                    <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                    Signing in…
-                  </span>
-                ) : (
-                  "Sign In"
-                )}
-              </Button>
-            </form>
+                <div className="space-y-1.5">
+                  <Label htmlFor="totpCode">Authentication Code</Label>
+                  <Input
+                    id="totpCode"
+                    type="text"
+                    placeholder="123456"
+                    autoComplete="one-time-code"
+                    inputMode="numeric"
+                    value={totpCode}
+                    onChange={(event) => setTotpCode(event.target.value)}
+                    maxLength={6}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isSubmitting}
+                    onClick={() => {
+                      setRequiresTwoFactor(false);
+                      setTotpCode("");
+                    }}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="bg-primary hover:bg-primary/90"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? "Verifying…" : "Verify Code"}
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleSubmit(onCredentialsSubmit)} className="space-y-4" noValidate>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email">Email Address</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="admin@staugustine.ca"
+                      className="pl-9"
+                      autoComplete="email"
+                      {...register("email")}
+                    />
+                  </div>
+                  {errors.email && (
+                    <p className="text-xs text-destructive">{errors.email.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      className="pl-9"
+                      autoComplete="current-password"
+                      {...register("password")}
+                    />
+                  </div>
+                  {errors.password && (
+                    <p className="text-xs text-destructive">{errors.password.message}</p>
+                  )}
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full mt-2 bg-primary hover:bg-primary/90"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <span className="flex items-center gap-2">
+                      <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                      Signing in…
+                    </span>
+                  ) : (
+                    "Continue"
+                  )}
+                </Button>
+              </form>
+            )}
           </CardContent>
         </Card>
 
