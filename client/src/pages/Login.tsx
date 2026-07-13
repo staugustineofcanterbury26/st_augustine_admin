@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lock, Mail } from "lucide-react";
-import TwoFactorReminder from "@/components/TwoFactorReminder";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email address"),
@@ -127,7 +126,6 @@ export default function Login() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <TwoFactorReminder className="mb-4" />
             {requiresTwoFactor ? (
               <form
                 onSubmit={(event) => {
