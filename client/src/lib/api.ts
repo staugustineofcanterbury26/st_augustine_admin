@@ -1,4 +1,5 @@
 import axios from "axios";
+import { upload as blobUpload } from "@vercel/blob/client";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
@@ -163,10 +164,23 @@ export interface Bulletin {
 
 export const bulletinsApi = {
   getAll: () => api.get<Bulletin[]>("/api/bulletins"),
-  upload: (formData: FormData) =>
-    api.post<Bulletin>("/api/bulletins/upload", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    }),
+  uploadFile: async (file: File) => {
+    const token = localStorage.getItem("admin_token");
+    const blob = await blobUpload(`bulletins/${file.name}`, file, {
+      access: "public",
+      handleUploadUrl: `${API_URL}/api/bulletins/upload-token`,
+      contentType: "application/pdf",
+      clientPayload: token ? JSON.stringify({ token }) : undefined,
+    });
+    return blob;
+  },
+  create: (data: {
+    title: string;
+    date: string;
+    fileUrl: string;
+    fileSize?: number;
+    category: "weekly_bulletin" | "other_document";
+  }) => api.post<Bulletin>("/api/bulletins", data),
   update: (id: number, data: Partial<Pick<Bulletin, "title" | "date" | "isPublished" | "category">>) =>
     api.put<Bulletin>(`/api/bulletins/${id}`, data),
   delete: (id: number) => api.delete(`/api/bulletins/${id}`),

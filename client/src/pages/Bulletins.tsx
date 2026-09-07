@@ -68,14 +68,15 @@ export default function Bulletins() {
       return;
     }
     setUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    // Default title from filename, date from today
-    formData.append("title", file.name.replace(/\.pdf$/i, ""));
-    formData.append("date", new Date().toISOString().split("T")[0]);
-    formData.append("category", uploadCategory);
     try {
-      const res = await bulletinsApi.upload(formData);
+      const blob = await bulletinsApi.uploadFile(file);
+      const res = await bulletinsApi.create({
+        title: file.name.replace(/\.pdf$/i, ""),
+        date: new Date().toISOString().split("T")[0],
+        fileUrl: blob.url,
+        fileSize: file.size,
+        category: uploadCategory,
+      });
       setBulletins((prev) => [res.data, ...prev]);
       toast.success("Bulletin uploaded");
     } catch {
