@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -22,7 +23,7 @@ import { homepageApi, type HomepageData } from "@/lib/api";
 import { ImageUpload } from "@/components/uploads/ImageUpload";
 import { VideoUpload } from "@/components/uploads/VideoUpload";
 import LinkTargetSelect from "@/components/LinkTargetSelect";
-import { Image, Video, Grid, GripVertical, Trash2 } from "lucide-react";
+import { Image, Video, Grid, GripVertical, Trash2, Newspaper } from "lucide-react";
 
 // Icon options for featured sections
 const ICON_OPTIONS = [
@@ -57,6 +58,9 @@ const formSchema = z.object({
   heroTitle: z.string().min(1, "Title is required"),
   heroSubtitle: z.string(),
   heroDescription: z.string(),
+  newsTitle: z.string().max(200, "Title must be 200 characters or fewer").optional().default(""),
+  newsContent: z.string().max(5000, "Body must be 5000 characters or fewer").optional().default(""),
+  newsEnabled: z.boolean().optional().default(false),
   sections: z.array(sectionSchema),
 });
 
@@ -73,6 +77,9 @@ export default function Homepage() {
       heroTitle: "",
       heroSubtitle: "",
       heroDescription: "",
+      newsTitle: "",
+      newsContent: "",
+      newsEnabled: false,
       sections: [],
     },
   });
@@ -91,6 +98,9 @@ export default function Homepage() {
           heroTitle: res.data.hero.heroTitle,
           heroSubtitle: res.data.hero.heroSubtitle,
           heroDescription: res.data.hero.heroDescription,
+          newsTitle: res.data.hero.newsTitle ?? "",
+          newsContent: res.data.hero.newsContent ?? "",
+          newsEnabled: res.data.hero.newsEnabled ?? false,
           sections: res.data.sections,
         });
       })
@@ -106,6 +116,9 @@ export default function Homepage() {
         heroTitle: formData.heroTitle,
         heroSubtitle: formData.heroSubtitle,
         heroDescription: formData.heroDescription,
+        newsTitle: formData.newsTitle,
+        newsContent: formData.newsContent,
+        newsEnabled: formData.newsEnabled,
       });
 
       // Update featured sections
@@ -353,6 +366,64 @@ export default function Homepage() {
                   showPreview
                 />
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ── News & Happenings ── */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-4">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Newspaper className="h-4 w-4 text-primary" />
+                News & Happenings
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="news-enabled" className="text-xs">
+                  Show on homepage
+                </Label>
+                <Switch
+                  id="news-enabled"
+                  checked={form.watch("newsEnabled") ?? false}
+                  onCheckedChange={(checked) =>
+                    form.setValue("newsEnabled", checked, { shouldDirty: true })
+                  }
+                />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1">
+              <Label className="text-xs">Section Title</Label>
+              <Input
+                placeholder="News & Happenings"
+                {...form.register("newsTitle")}
+                className="h-8 text-sm"
+              />
+              {form.formState.errors.newsTitle && (
+                <p className="text-xs text-destructive">
+                  {form.formState.errors.newsTitle.message}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Leave blank to use the default title "News & Happenings".
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Body</Label>
+              <Textarea
+                rows={8}
+                {...form.register("newsContent")}
+                className="text-sm"
+              />
+              {form.formState.errors.newsContent && (
+                <p className="text-xs text-destructive">
+                  {form.formState.errors.newsContent.message}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Line breaks are preserved. Toggle "Show on homepage" off to hide the section without deleting content.
+              </p>
             </div>
           </CardContent>
         </Card>

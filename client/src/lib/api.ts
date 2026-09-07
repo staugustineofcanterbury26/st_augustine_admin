@@ -542,6 +542,9 @@ export interface HomepageContent {
   heroDescription: string;
   communityImageUrl: string;
   candlesImageUrl: string;
+  newsTitle: string;
+  newsContent: string;
+  newsEnabled: boolean;
   updatedAt: string;
 }
 
