@@ -65,7 +65,7 @@ export default function AdminLayout({ title, description, children, showSecurity
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} collapsed={isCollapsed} onToggleCollapse={() => setIsCollapsed((s) => !s)} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar title={title} description={description} onOpenSidebar={() => setIsSidebarOpen(true)} />
-        <div className="flex-1 overflow-y-auto">
+        <div className="relative flex-1 overflow-y-auto">
           <div className="p-6 max-w-full">
             {showSecurityReminder && !isLoading && !user?.twoFactorEnabled && <TwoFactorReminder className="mb-6" />}
             {children}
